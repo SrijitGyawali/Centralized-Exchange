@@ -1,0 +1,15 @@
+# Normalize text files to LF in the repository. This matters on Windows:
+# gofmt expects LF, and shell scripts / Dockerfiles break with CRLF.
+* text=auto eol=lf
+
+# Windows-only scripts keep CRLF.
+*.bat  text eol=crlf
+*.ps1  text eol=crlf
+
+# Binary formats: never apply line-ending conversion. A WAL fixture with a
+# rewritten byte would fail its checksum and look like corruption.
+*.wal  binary
+*.snap binary
+*.bin  binary
+*.pdf  binary
+*.png  binary
