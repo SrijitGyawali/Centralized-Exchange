@@ -1,0 +1,35 @@
+# --- Build output -----------------------------------------------------------
+# Binaries are produced by `make build` into bin/. Never commit them.
+/bin/
+*.exe
+*.test
+*.out
+
+# --- Runtime data -----------------------------------------------------------
+# The WAL (command journal) and snapshots are the exchange's authoritative
+# state. They are data, not source, and can be large. Local runs write here.
+/data/
+*.wal
+*.snap
+
+# --- Profiling & test artifacts --------------------------------------------
+# Raw profiles worth keeping go to evidence/ deliberately, with context.
+*.pprof
+*.prof
+*.trace
+coverage.*
+/testdata/fuzz-local/
+
+# --- Secrets ----------------------------------------------------------------
+# Real configuration lives in .env (ignored). .env.example is committed.
+.env
+.env.*
+!.env.example
+
+# --- Editors / OS -----------------------------------------------------------
+.idea/
+.vscode/*
+!.vscode/settings.json
+*.swp
+.DS_Store
+Thumbs.db
