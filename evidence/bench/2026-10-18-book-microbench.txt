@@ -1,0 +1,31 @@
+# Order book microbenchmarks, 2026-10-18
+#
+# What:    internal/book Place (resting), Place (crossing, one fill), Cancel
+# Command: go test -run '^$' -bench . -benchmem -count 3 ./internal/book
+# Code:    the commit that adds this file (bench_test.go is in the same push)
+# Go:      go version go1.26.5 windows/amd64
+# Machine: laptop on battery/AC as-is, other apps running; no CPU pinning
+#
+# Notes:
+# - PlaceResting varied 206-432 ns/op across the 3 runs: background noise on a
+#   laptop. Not investigated yet. Compare runs with benchstat and more -count
+#   before drawing conclusions.
+# - Book size: 100 price levels, rebuilt every 4,096 orders (setup not timed).
+# - These are pure in-memory costs. Durable latency will be dominated by the
+#   WAL fsync (week 4); this is a baseline, not a performance claim.
+#
+goos: windows
+goarch: amd64
+pkg: github.com/SrijitGyawali/Centralized-Exchange/internal/book
+cpu: 11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz
+BenchmarkPlaceResting-8    	 6230512	       206.1 ns/op	     153 B/op	       1 allocs/op
+BenchmarkPlaceResting-8    	 5263840	       248.3 ns/op	     153 B/op	       1 allocs/op
+BenchmarkPlaceResting-8    	 2973331	       431.9 ns/op	     153 B/op	       1 allocs/op
+BenchmarkPlaceCrossing-8   	 6047938	       205.6 ns/op	      64 B/op	       1 allocs/op
+BenchmarkPlaceCrossing-8   	 6208962	       190.8 ns/op	      64 B/op	       1 allocs/op
+BenchmarkPlaceCrossing-8   	 6670431	       198.1 ns/op	      64 B/op	       1 allocs/op
+BenchmarkCancel-8          	13033476	       108.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCancel-8          	12435529	       109.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCancel-8          	10906660	       107.8 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/SrijitGyawali/Centralized-Exchange/internal/book	42.283s
