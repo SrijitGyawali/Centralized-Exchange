@@ -58,6 +58,11 @@ func TestCheckInvariantsCatchesCorruption(t *testing.T) {
 			l.price = 100
 			l.head.order.Price = 100
 		}, "crossed"},
+		{"filled maker left behind", func(b *Book) {
+			l := b.asks.levels[1] // order 5 alone at 111: fill it to zero but "forget" to remove it
+			l.total -= l.head.order.Qty
+			l.head.order.Qty = 0
+		}, "no quantity left"},
 	}
 
 	for _, tc := range tests {
