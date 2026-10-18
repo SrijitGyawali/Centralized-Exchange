@@ -32,6 +32,54 @@ func (s Side) String() string {
 	}
 }
 
+// Opposite returns the side an order trades against: a buy matches sells,
+// a sell matches buys. An invalid side stays invalid.
+func (s Side) Opposite() Side {
+	switch s {
+	case Buy:
+		return Sell
+	case Sell:
+		return Buy
+	default:
+		return s
+	}
+}
+
+// TimeInForce says what happens to the part of an order that does not
+// trade immediately.
+//
+// Like Side, the zero value is invalid, so a forgotten field is rejected
+// instead of silently defaulting to one behaviour.
+//
+// FOK (fill-or-kill) is deliberately absent. It needs a side-effect-free
+// feasibility check using the same liquidity and self-trade rules as
+// execution, which the plan defers until the basics are solid.
+type TimeInForce uint8
+
+const (
+	// GTC (good 'til canceled): match what you can, then rest the remainder
+	// in the book until it fills or is canceled.
+	GTC TimeInForce = iota + 1
+	// IOC (immediate or cancel): match what you can, then cancel the
+	// remainder. An IOC order never rests.
+	IOC
+)
+
+// Valid reports whether t is GTC or IOC.
+func (t TimeInForce) Valid() bool { return t == GTC || t == IOC }
+
+// String implements fmt.Stringer: "gtc", "ioc".
+func (t TimeInForce) String() string {
+	switch t {
+	case GTC:
+		return "gtc"
+	case IOC:
+		return "ioc"
+	default:
+		return fmt.Sprintf("TimeInForce(%d)", uint8(t))
+	}
+}
+
 // OrderID identifies an order. The engine assigns IDs from 1 upward, so the
 // zero value means "no order".
 type OrderID uint64
