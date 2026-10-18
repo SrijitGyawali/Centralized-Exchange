@@ -25,10 +25,6 @@ var (
 	// book has seen. FIFO priority is only correct if orders arrive in
 	// sequence order, so the book enforces it instead of trusting callers.
 	ErrSeqNotIncreasing = errors.New("sequence not increasing")
-
-	// ErrWouldCross: the order would trade immediately (a buy at or above the
-	// best ask, or a sell at or below the best bid). Matching arrives in week
-	// 2; until then, resting such an order would leave a "crossed" book,
-	// which must never exist.
-	ErrWouldCross = errors.New("order would cross the book")
 )
+
+// A crossing order is not an error: Place matches it (see match.go).
