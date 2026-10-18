@@ -23,13 +23,18 @@ func ord(id uint64, side domain.Side, price, qty int64) Order {
 	}
 }
 
-// mustAdd adds o and verifies every invariant; it stops the test on error.
+// mustAdd places each order as GTC, requires that it rests without trading,
+// and verifies every invariant; it stops the test on any surprise.
 // t.Helper() makes failures point at the caller's line, not this one.
 func mustAdd(t *testing.T, b *Book, orders ...Order) {
 	t.Helper()
 	for _, o := range orders {
-		if err := b.Add(o); err != nil {
-			t.Fatalf("Add(%+v): %v", o, err)
+		res, err := b.Place(o, domain.GTC)
+		if err != nil {
+			t.Fatalf("Place(%+v): %v", o, err)
+		}
+		if res.Outcome != Rested || len(res.Fills) != 0 {
+			t.Fatalf("Place(%+v) = %v with %d fills; this setup order was meant to rest untouched", o, res.Outcome, len(res.Fills))
 		}
 		mustBeValid(t, b)
 	}
@@ -196,9 +201,10 @@ func TestCancelUnknownOrTwice(t *testing.T) {
 	mustBeValid(t, b)
 }
 
-// TestAddRejects checks every rejection, and that a rejected Add leaves the
-// book exactly as it was (no partial changes).
-func TestAddRejects(t *testing.T) {
+// TestPlaceRejects checks every rejection, and that a rejected Place leaves
+// the book exactly as it was (no partial changes). Orders that cross the
+// spread are not rejections any more; they trade (see match_test.go).
+func TestPlaceRejects(t *testing.T) {
 	base := func(t *testing.T) *Book {
 		b := New()
 		mustAdd(t, b, ord(1, domain.Buy, 100, 1_000), ord(2, domain.Sell, 110, 1_000))
@@ -223,10 +229,10 @@ func TestAddRejects(t *testing.T) {
 		{"duplicate id", with(func(o *Order) { o.ID = 1 }), []error{ErrDuplicateOrder}},
 		{"seq equal to last", with(func(o *Order) { o.Seq = 2 }), []error{ErrSeqNotIncreasing}},
 		{"seq below last", with(func(o *Order) { o.Seq = 1 }), []error{ErrSeqNotIncreasing}},
-		{"buy at best ask", with(func(o *Order) { o.Price = 110 }), []error{ErrWouldCross}},
-		{"buy above best ask", with(func(o *Order) { o.Price = 120 }), []error{ErrWouldCross}},
-		{"sell at best bid", with(func(o *Order) { o.Side, o.Price = domain.Sell, 100 }), []error{ErrWouldCross}},
-		{"sell below best bid", with(func(o *Order) { o.Side, o.Price = domain.Sell, 90 }), []error{ErrWouldCross}},
+		// An invalid order that WOULD cross must still be rejected before
+		// any matching starts: the resting ask at 110 must stay untouched.
+		{"crossing but zero qty", with(func(o *Order) { o.Price, o.Qty = 110, 0 }), []error{ErrInvalidOrder, domain.ErrOutOfRange}},
+		{"crossing but duplicate id", with(func(o *Order) { o.Price, o.ID = 110, 1 }), []error{ErrDuplicateOrder}},
 	}
 
 	for _, tc := range tests {
@@ -234,17 +240,17 @@ func TestAddRejects(t *testing.T) {
 			b := base(t)
 			before, beforeLen := b.Depth(0), b.Len()
 
-			err := b.Add(tc.order) // must not panic, whatever the input
+			_, err := b.Place(tc.order, domain.GTC) // must not panic, whatever the input
 			for _, want := range tc.wantErrs {
 				if !errors.Is(err, want) {
-					t.Errorf("Add(%+v) error = %v, want it to match %v", tc.order, err, want)
+					t.Errorf("Place(%+v) error = %v, want it to match %v", tc.order, err, want)
 				}
 			}
 
 			mustBeValid(t, b)
 			after := b.Depth(0)
 			if b.Len() != beforeLen || !slices.Equal(after.Bids, before.Bids) || !slices.Equal(after.Asks, before.Asks) {
-				t.Errorf("rejected Add changed the book:\nbefore:\n%vafter:\n%v", before, after)
+				t.Errorf("rejected Place changed the book:\nbefore:\n%vafter:\n%v", before, after)
 			}
 		})
 	}
