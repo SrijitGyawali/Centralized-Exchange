@@ -42,17 +42,31 @@ func New() *Book {
 	}
 }
 
-// Add rests order o at the back of the queue for its price.
+// Add rests order o without matching, rejecting it with ErrWouldCross if it
+// would trade.
 //
-// There is no matching yet (that is week 2), so an order that would trade
-// immediately is rejected with ErrWouldCross. That keeps the core rule "best
-// bid < best ask" true after every call. In week 2, matching runs first and
-// only the unfilled remainder reaches this step.
-//
-// Every check runs before anything changes: if Add returns an error, the
-// book is exactly as it was. The state package will rely on this
-// "validate everything, then mutate" rule to avoid half-applied commands.
+// Deprecated: use Place, which matches crossing orders. Add remains only
+// while the tests migrate to Place, and is then removed.
 func (b *Book) Add(o Order) error {
+	if err := b.checkNew(o); err != nil {
+		return err
+	}
+	if b.wouldCross(o) {
+		return fmt.Errorf("%w: %v at %d", ErrWouldCross, o.Side, o.Price)
+	}
+	b.lastSeq = o.Seq
+	b.rest(o)
+	return nil
+}
+
+// checkNew runs every check a new order must pass before the book changes
+// anything: valid fields, a fresh ID, an increasing Seq, and room in its
+// level's total. If it returns nil, the order can be matched and rested
+// without any further failure possible.
+//
+// This is the "validate everything, then mutate" rule: a rejected order
+// leaves the book exactly as it was, so a command is never half-applied.
+func (b *Book) checkNew(o Order) error {
 	if err := o.validate(); err != nil {
 		return err
 	}
@@ -62,19 +76,22 @@ func (b *Book) Add(o Order) error {
 	if o.Seq <= b.lastSeq {
 		return fmt.Errorf("%w: got %d, last was %d", ErrSeqNotIncreasing, o.Seq, b.lastSeq)
 	}
-	if b.wouldCross(o) {
-		return fmt.Errorf("%w: %v at %d", ErrWouldCross, o.Side, o.Price)
-	}
 	ld := b.sideOf(o.Side)
-	i, found := ld.search(o.Price)
-	if found && ld.levels[i].total > math.MaxInt64-o.Qty {
+	if i, found := ld.search(o.Price); found && ld.levels[i].total > math.MaxInt64-o.Qty {
 		// Unreachable within the configured bounds (it would take about 9e13
 		// orders at one price), but checked anyway: Go integers wrap
 		// silently on overflow, and a wrong total is wrong market data.
 		return fmt.Errorf("total at price %d: %w", o.Price, domain.ErrOverflow)
 	}
+	return nil
+}
 
-	// All checks passed. From here on nothing can fail.
+// rest appends o to the back of the queue at its price, creating the level
+// if needed. The caller must have run checkNew and confirmed o does not
+// cross the opposite side.
+func (b *Book) rest(o Order) {
+	ld := b.sideOf(o.Side)
+	i, found := ld.search(o.Price)
 	var l *level
 	if found {
 		l = ld.levels[i]
@@ -84,8 +101,6 @@ func (b *Book) Add(o Order) error {
 	n := &node{order: o}
 	l.pushBack(n)
 	b.orders[o.ID] = n
-	b.lastSeq = o.Seq
-	return nil
 }
 
 // wouldCross reports whether o would trade against the opposite side.
