@@ -24,6 +24,8 @@ import (
 //  7. The order-ID index contains exactly the orders in the queues.
 //  8. No order's Seq is above the book's lastSeq.
 //  9. The book is not crossed: best bid < best ask.
+//  10. Every resting order has quantity left. A maker filled down to zero
+//     must leave the book; a zero-quantity "ghost" would be matched again.
 func (b *Book) CheckInvariants() error {
 	indexed := 0
 	sides := []struct {
@@ -64,6 +66,8 @@ func (b *Book) CheckInvariants() error {
 					return fmt.Errorf("%v level %d: FIFO broken, seq %d after %d", s.side, l.price, o.Seq, prevSeq)
 				case o.Seq > b.lastSeq: // rule 8
 					return fmt.Errorf("order %d has seq %d above lastSeq %d", o.ID, o.Seq, b.lastSeq)
+				case o.Qty < domain.MinQty: // rule 10
+					return fmt.Errorf("order %d rests with no quantity left (%d)", o.ID, o.Qty)
 				case b.orders[o.ID] != n: // rule 7
 					return fmt.Errorf("order %d is queued but missing from the index", o.ID)
 				}
