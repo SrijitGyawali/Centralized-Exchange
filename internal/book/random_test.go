@@ -11,16 +11,17 @@ import (
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/domain"
 )
 
-// refBook is a deliberately slow, obviously-correct model of an order book:
-// a plain map of live orders. Every question is answered by scanning all of
-// them. If the real Book (linked lists, sorted slices, an index) ever
-// disagrees with this model, the real Book has a bug.
+// refBook is a deliberately slow, obviously correct order book and matcher:
+// a plain map of live orders, where every question ("who is the best maker?")
+// is answered by scanning all of them. It shares no matching code with Book.
+// If the real Book (sorted slices, linked lists, an index) ever disagrees
+// with this model, the real Book has a bug.
 type refBook struct {
 	live map[domain.OrderID]Order
 	// ids lists live orders in insertion order. Tests pick random orders from
-	// this slice, not from the map, because Go deliberately randomizes map
-	// iteration order. With a slice, a given seed always produces the same
-	// run, so any failure can be reproduced exactly.
+	// this slice, never by ranging over the map, because Go deliberately
+	// randomizes map iteration order. With a slice, a given seed always
+	// produces the same run, so any failure can be reproduced exactly.
 	ids []domain.OrderID
 }
 
@@ -29,23 +30,77 @@ func (r *refBook) add(o Order) {
 	r.ids = append(r.ids, o.ID)
 }
 
-func (r *refBook) cancel(id domain.OrderID) {
+func (r *refBook) remove(id domain.OrderID) {
 	delete(r.live, id)
 	r.ids = slices.DeleteFunc(r.ids, func(x domain.OrderID) bool { return x == id })
 }
 
-// crosses: a buy crosses if any ask is at or below its price; a sell crosses
-// if any bid is at or above its price.
-func (r *refBook) crosses(o Order) bool {
-	for _, x := range r.live {
-		if x.Side == o.Side {
+// bestMaker scans every live order on side s for the one that should trade
+// next: best price first (lowest ask / highest bid), then lowest Seq.
+func (r *refBook) bestMaker(s domain.Side) (Order, bool) {
+	var best Order
+	found := false
+	for _, id := range r.ids {
+		o := r.live[id]
+		if o.Side != s {
 			continue
 		}
-		if (o.Side == domain.Buy && x.Price <= o.Price) || (o.Side == domain.Sell && x.Price >= o.Price) {
-			return true
+		better := !found ||
+			(s == domain.Sell && o.Price < best.Price) ||
+			(s == domain.Buy && o.Price > best.Price) ||
+			(o.Price == best.Price && o.Seq < best.Seq)
+		if better {
+			best, found = o, true
 		}
 	}
-	return false
+	return best, found
+}
+
+// place applies the Tier 1 matching rules in the most literal way possible.
+func (r *refBook) place(o Order, tif domain.TimeInForce) Result {
+	res := Result{Remaining: o.Qty}
+	makerSide := domain.Sell
+	if o.Side == domain.Sell {
+		makerSide = domain.Buy
+	}
+	for res.Remaining > 0 {
+		m, ok := r.bestMaker(makerSide)
+		if !ok {
+			break
+		}
+		if (o.Side == domain.Buy && m.Price > o.Price) || (o.Side == domain.Sell && m.Price < o.Price) {
+			break // no longer crosses
+		}
+		if m.User == o.User {
+			res.Outcome = CanceledSelfTrade
+			break
+		}
+		q := min(res.Remaining, m.Qty)
+		m.Qty -= q
+		res.Remaining -= q
+		res.Fills = append(res.Fills, Trade{
+			Price: m.Price, Qty: q,
+			Maker: m.ID, MakerUser: m.User, MakerRemaining: m.Qty,
+			Taker: o.ID, TakerUser: o.User, TakerSide: o.Side,
+		})
+		if m.Qty == 0 {
+			r.remove(m.ID)
+		} else {
+			r.live[m.ID] = m
+		}
+	}
+	switch {
+	case res.Outcome == CanceledSelfTrade:
+	case res.Remaining == 0:
+		res.Outcome = Filled
+	case tif == domain.IOC:
+		res.Outcome = CanceledIOC
+	default:
+		o.Qty = res.Remaining
+		r.add(o)
+		res.Outcome = Rested
+	}
+	return res
 }
 
 func (r *refBook) depth() Depth {
@@ -76,57 +131,63 @@ func (r *refBook) queue(side domain.Side, p domain.Price) []Order {
 	return q
 }
 
-// TestRandomOperationsMatchReference runs thousands of random adds and
-// cancels against both the real Book and refBook, and demands that they agree
-// on every result, every queue and every depth snapshot. It checks all
-// invariants after every single step.
+// TestRandomOperationsMatchReference runs thousands of random orders and
+// cancels through both the real Book and refBook, and demands that they
+// agree on every trade, every outcome, every queue and every depth snapshot.
+// It also checks all invariants after every single step.
 //
-// The seed is fixed, so the "random" sequence is identical on every run and
-// on every machine. Change the seed to explore new sequences.
+// Bids are drawn from 990..1003 and asks from 997..1010. The overlap makes
+// many orders cross, and the offset lets a deep book build up, so orders
+// often sweep several price levels. Only four users exist, so self-trade
+// prevention happens often. The seed is fixed: the "random" sequence is
+// identical on every run and every machine. Change the seed to explore.
 func TestRandomOperationsMatchReference(t *testing.T) {
 	const steps = 5_000
 	rng := rand.New(rand.NewPCG(2026, 10))
 
 	b := New()
 	ref := &refBook{live: map[domain.OrderID]Order{}}
-	nextID := uint64(1)
-	var adds, crossRejects, cancels, unknownCancels int
+	nextSeq := uint64(1)
+	count := map[string]int{}
 
 	for step := 0; step < steps; step++ {
-		if len(ref.ids) == 0 || rng.IntN(100) < 65 {
-			// Add a random order. Bids land on 950..1009 and asks on 1000..1059.
-			// The overlap makes some orders cross, exercising ErrWouldCross.
+		if len(ref.ids) == 0 || rng.IntN(100) < 75 {
 			o := Order{
-				ID:   domain.OrderID(nextID),
-				User: domain.UserID(1 + rng.IntN(20)),
-				Qty:  domain.Qty(1 + rng.Int64N(5_000)),
-				Seq:  domain.Seq(nextID),
+				ID:    domain.OrderID(nextSeq),
+				User:  domain.UserID(1 + rng.IntN(4)),
+				Side:  domain.Buy,
+				Price: domain.Price(990 + rng.Int64N(14)),
+				Qty:   domain.Qty(1 + rng.Int64N(3_000)),
+				Seq:   domain.Seq(nextSeq),
 			}
-			nextID++
+			nextSeq++
 			if rng.IntN(2) == 0 {
-				o.Side, o.Price = domain.Buy, domain.Price(950+rng.Int64N(60))
-			} else {
-				o.Side, o.Price = domain.Sell, domain.Price(1000+rng.Int64N(60))
+				o.Side, o.Price = domain.Sell, domain.Price(997+rng.Int64N(14))
+			}
+			tif := domain.GTC
+			if rng.IntN(10) < 3 {
+				tif = domain.IOC
 			}
 
-			wantCross := ref.crosses(o)
-			err := b.Add(o)
-			switch {
-			case wantCross && !errors.Is(err, ErrWouldCross):
-				t.Fatalf("step %d: Add(%+v) = %v, but the reference says it crosses", step, o, err)
-			case !wantCross && err != nil:
-				t.Fatalf("step %d: Add(%+v) = %v, but the reference accepts it", step, o, err)
-			case err == nil:
-				ref.add(o)
-				adds++
-			default:
-				crossRejects++
+			want := ref.place(o, tif)
+			got, err := b.Place(o, tif)
+			if err != nil {
+				t.Fatalf("step %d: Place(%+v, %v): %v", step, o, tif, err)
+			}
+			if !slices.Equal(got.Fills, want.Fills) || got.Remaining != want.Remaining || got.Outcome != want.Outcome {
+				t.Fatalf("step %d: Place(%+v, %v)\n got  %+v\n want %+v", step, o, tif, got, want)
+			}
+			count["orders"]++
+			count["fills"] += len(got.Fills)
+			count[got.Outcome.String()]++
+			if len(got.Fills) > 1 && got.Fills[0].Price != got.Fills[len(got.Fills)-1].Price {
+				count["multi-level sweeps"]++
 			}
 		} else {
 			// Cancel: usually a live order, sometimes an ID that never existed.
 			var id domain.OrderID
 			if rng.IntN(10) == 0 {
-				id = domain.OrderID(1_000_000 + nextID) // never issued
+				id = domain.OrderID(1_000_000 + nextSeq) // never issued
 			} else {
 				id = ref.ids[rng.IntN(len(ref.ids))]
 			}
@@ -139,10 +200,10 @@ func TestRandomOperationsMatchReference(t *testing.T) {
 			case !known && !errors.Is(err, ErrUnknownOrder):
 				t.Fatalf("step %d: Cancel(unknown %d) error = %v, want ErrUnknownOrder", step, id, err)
 			case known:
-				ref.cancel(id)
-				cancels++
+				ref.remove(id)
+				count["cancels"]++
 			default:
-				unknownCancels++
+				count["unknown cancels"]++
 			}
 		}
 
@@ -157,10 +218,14 @@ func TestRandomOperationsMatchReference(t *testing.T) {
 		}
 	}
 
-	t.Logf("%d steps: %d adds, %d crossing rejects, %d cancels, %d unknown cancels; %d orders resting at the end",
-		steps, adds, crossRejects, cancels, unknownCancels, b.Len())
-	if adds == 0 || crossRejects == 0 || cancels == 0 || unknownCancels == 0 {
-		t.Error("the random mix did not exercise every path; adjust the probabilities")
+	t.Logf("%d steps, %d resting at the end: %v", steps, b.Len(), count)
+	for _, path := range []string{
+		"fills", "multi-level sweeps", Filled.String(), Rested.String(),
+		CanceledIOC.String(), CanceledSelfTrade.String(), "cancels", "unknown cancels",
+	} {
+		if count[path] == 0 {
+			t.Errorf("the random mix never exercised %q; adjust the probabilities", path)
+		}
 	}
 }
 
