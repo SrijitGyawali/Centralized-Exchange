@@ -16,12 +16,16 @@ import (
 //	│         each level: FIFO doubly linked queue of orders
 //	└── orders  map[OrderID]*node: jump straight to any order (for cancel)
 //
-// Cost summary (P = price levels on one side):
+// Orders enter only through Place (match.go), which trades whatever crosses
+// and rests a GTC remainder. They leave through Cancel or by being filled.
 //
-//	Add, existing price:  O(log P) find + O(1) append
-//	Add, new price:       O(log P) find + O(P) insert
-//	Cancel:               O(1) unlink, + O(P) only if the level empties
-//	Best bid / ask:       O(1)
+// Cost summary (P = price levels on one side, F = fills produced):
+//
+//	Place, no trade, existing price:  O(log P) find + O(1) append
+//	Place, no trade, new price:       O(log P) find + O(P) insert
+//	Place that trades:                O(F) fills, + O(P) per emptied level
+//	Cancel:                           O(1) unlink, + O(P) only if the level empties
+//	Best bid / ask:                   O(1)
 //
 // A Book is NOT safe for concurrent use, on purpose. The engine's single
 // owner goroutine (ADR-0001) is the only code that ever touches it, so it
@@ -40,23 +44,6 @@ func New() *Book {
 		asks:   ladder{desc: false},
 		orders: make(map[domain.OrderID]*node),
 	}
-}
-
-// Add rests order o without matching, rejecting it with ErrWouldCross if it
-// would trade.
-//
-// Deprecated: use Place, which matches crossing orders. Add remains only
-// while the tests migrate to Place, and is then removed.
-func (b *Book) Add(o Order) error {
-	if err := b.checkNew(o); err != nil {
-		return err
-	}
-	if b.wouldCross(o) {
-		return fmt.Errorf("%w: %v at %d", ErrWouldCross, o.Side, o.Price)
-	}
-	b.lastSeq = o.Seq
-	b.rest(o)
-	return nil
 }
 
 // checkNew runs every check a new order must pass before the book changes
@@ -87,8 +74,8 @@ func (b *Book) checkNew(o Order) error {
 }
 
 // rest appends o to the back of the queue at its price, creating the level
-// if needed. The caller must have run checkNew and confirmed o does not
-// cross the opposite side.
+// if needed. Only Place calls it, after checkNew passed and matching has
+// stopped, so o no longer crosses the opposite side.
 func (b *Book) rest(o Order) {
 	ld := b.sideOf(o.Side)
 	i, found := ld.search(o.Price)
@@ -101,16 +88,6 @@ func (b *Book) rest(o Order) {
 	n := &node{order: o}
 	l.pushBack(n)
 	b.orders[o.ID] = n
-}
-
-// wouldCross reports whether o would trade against the opposite side.
-func (b *Book) wouldCross(o Order) bool {
-	if o.Side == domain.Buy {
-		ask := b.asks.best()
-		return ask != nil && o.Price >= ask.price
-	}
-	bid := b.bids.best()
-	return bid != nil && o.Price <= bid.price
 }
 
 // Cancel removes a resting order and returns it as it was just before
