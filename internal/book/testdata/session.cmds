@@ -1,0 +1,43 @@
+# A recorded trading session: the fixture for the week-2 gate,
+# "a saved command fixture replays identically twice" (fixture_test.go).
+#
+# Columns:
+#   place  <order-id> <user> <buy|sell> <price USDT/BTC> <qty BTC> <gtc|ioc>
+#   cancel <order-id>
+#
+# Sequence numbers work like the engine's: every command that reaches the
+# book gets the next Seq, including ones the book rejects (a rejection is a
+# decision too, and must replay the same way). A line whose price or
+# quantity cannot even be parsed is rejected at the edge, before any Seq.
+#
+# Blank lines and lines starting with # are ignored.
+
+# 1. Build a book: two sellers, two buyers queued at the same price.
+place 1 7 sell 60100 0.3000 gtc
+place 2 8 sell 60200 0.2000 gtc
+place 3 9 buy 60000 0.1000 gtc
+place 4 10 buy 60000 0.2500 gtc
+
+# 2. A buyer paying up to 60,200 sweeps both ask levels, at each maker's price.
+place 5 11 buy 60200 0.4000 gtc
+
+# 3. An IOC seller hits the bids. FIFO at 60,000: #3 fills before #4.
+place 6 12 sell 59900 0.2000 ioc
+
+# 4. Self-trade prevention: user 8 would buy from their own ask (#2).
+place 7 8 buy 60200 0.1000 gtc
+
+# 5. Cancel the partially filled #4, then try to cancel it again.
+cancel 4
+cancel 4
+
+# 6. Rejections. Too many decimals, and a zero price, fail parsing (no Seq).
+#    Reusing id 2 fails in the book: #2 is still resting. (The book only
+#    knows RESTING ids; globally unique ids are the engine's job, week 3.)
+place 8 13 buy 60000 0.00001 gtc
+place 2 13 buy 59000 0.1000 gtc
+place 9 13 buy 0 0.1000 gtc
+
+# 7. A buyer rests, then an IOC seller takes it and cancels the rest.
+place 10 14 buy 59950 0.0500 gtc
+place 11 15 sell 59950 0.1000 ioc

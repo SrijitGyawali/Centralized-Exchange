@@ -1,0 +1,23 @@
+seq 1   place 1 7 sell 60100 0.3000 gtc -> rested, remaining 0.3000
+seq 2   place 2 8 sell 60200 0.2000 gtc -> rested, remaining 0.2000
+seq 3   place 3 9 buy 60000 0.1000 gtc -> rested, remaining 0.1000
+seq 4   place 4 10 buy 60000 0.2500 gtc -> rested, remaining 0.2500
+seq 5   place 5 11 buy 60200 0.4000 gtc -> filled
+        fill 0.3000 @ 60100 against #1 (user 7), maker left 0.0000
+        fill 0.1000 @ 60200 against #2 (user 8), maker left 0.1000
+seq 6   place 6 12 sell 59900 0.2000 ioc -> filled
+        fill 0.1000 @ 60000 against #3 (user 9), maker left 0.0000
+        fill 0.1000 @ 60000 against #4 (user 10), maker left 0.1500
+seq 7   place 7 8 buy 60200 0.1000 gtc -> canceled (self-trade prevented), remaining 0.1000
+seq 8   cancel 4 -> canceled, remaining 0.1500
+seq 9   cancel 4 -> rejected: unknown order id: 4
+---     place 8 13 buy 60000 0.00001 gtc -> rejected: quantity "0.00001": too many decimal places
+seq 10  place 2 13 buy 59000 0.1000 gtc -> rejected: duplicate order id: 2
+---     place 9 13 buy 0 0.1000 gtc -> rejected: price "0": value out of range: must be 1..1000000
+seq 11  place 10 14 buy 59950 0.0500 gtc -> rested, remaining 0.0500
+seq 12  place 11 15 sell 59950 0.1000 ioc -> canceled (ioc remainder), remaining 0.0500
+        fill 0.0500 @ 59950 against #10 (user 14), maker left 0.0000
+
+final book:
+ASK    60200    0.1000   1
+----- no spread (a side is empty) -----
