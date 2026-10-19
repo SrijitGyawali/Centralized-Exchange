@@ -40,6 +40,26 @@ func TestFormatQtyRoundTrip(t *testing.T) {
 	}
 }
 
+func TestFormatAtoms(t *testing.T) {
+	tests := []struct {
+		a    Atoms
+		want string
+	}{
+		{1, "0.000001"},
+		{100, "0.000100"}, // one tick × one lot
+		{1_000_000, "1.000000"},
+		{6_000_000_000, "6000.000000"},           // the ADR-0002 example
+		{10_000_000_000_000, "10000000.000000"},  // largest possible order
+		{-2_500_000, "-2.500000"},                // negative: e.g. the issuance account
+		{math.MinInt64, "-9223372036854.775808"}, // no overflow at the extreme
+	}
+	for _, tc := range tests {
+		if got := FormatAtoms(tc.a); got != tc.want {
+			t.Errorf("FormatAtoms(%d) = %q, want %q", tc.a, got, tc.want)
+		}
+	}
+}
+
 func TestFormatPrice(t *testing.T) {
 	tests := []struct {
 		p    Price
