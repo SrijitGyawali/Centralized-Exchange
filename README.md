@@ -9,9 +9,22 @@ built as a serious systems project for learning production Go.
 
 ## Status
 
-**Day 1: project skeleton.** The server binary starts, serves `/healthz`
-and `/readyz`, and shuts down gracefully. Domain code starts in week 1,
-session 2. See the [build order](docs/ARCHITECTURE.md#8-build-order).
+**Week 3 in progress.** The pure core works and is tested; nothing is
+durable or reachable over HTTP yet.
+
+| Piece | Package | State |
+|---|---|---|
+| Units, exact decimal parsing, checked arithmetic | `internal/domain` | ✅ week 1 |
+| Order book: price levels, FIFO queues, cancel | `internal/book` | ✅ week 1 |
+| Matching: price-time priority, partial fills, IOC, self-trade prevention | `internal/book` | ✅ week 2 |
+| Money: reservations, double-entry ledger, settlement, idempotent retries | `internal/state` | ✅ week 3 |
+| Engine: single owner goroutine, concurrent submissions | `internal/engine` | ⏳ next |
+| Durable journal (WAL) and crash recovery | `internal/journal` | week 4 |
+| HTTP API | `internal/api` | week 5 (health checks only today) |
+
+The server binary starts, serves `/healthz` and `/readyz`, and shuts down
+gracefully. See the [build order](docs/ARCHITECTURE.md#8-build-order) and
+the day-by-day notes in [track/](track/).
 
 ## Quick start
 
@@ -40,7 +53,10 @@ Configuration comes from environment variables. See
 ## Core guarantees (targets, proven by tests as they are built)
 
 1. A success response means the command is durable (fsynced) **and** applied.
+   *(week 4)*
 2. Restarting replays the journal and reproduces the full state exactly.
+   *(week 4; in-memory replay determinism is already tested)*
 3. Retrying a request with the same key never applies it twice.
+   ✅ *tested in `internal/state`*
 4. Every asset's ledger postings sum to zero, and user balances never go
-   negative.
+   negative. ✅ *checked after every command in randomized tests*
