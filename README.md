@@ -9,8 +9,9 @@ built as a serious systems project for learning production Go.
 
 ## Status
 
-**Week 3 in progress.** The pure core works and is tested; nothing is
-durable or reachable over HTTP yet.
+**Week 3 complete.** The core and its single-owner engine work and are
+tested under the race detector; nothing is durable or reachable over HTTP
+yet.
 
 | Piece | Package | State |
 |---|---|---|
@@ -18,8 +19,8 @@ durable or reachable over HTTP yet.
 | Order book: price levels, FIFO queues, cancel | `internal/book` | ✅ week 1 |
 | Matching: price-time priority, partial fills, IOC, self-trade prevention | `internal/book` | ✅ week 2 |
 | Money: reservations, double-entry ledger, settlement, idempotent retries | `internal/state` | ✅ week 3 |
-| Engine: single owner goroutine, concurrent submissions | `internal/engine` | ⏳ next |
-| Durable journal (WAL) and crash recovery | `internal/journal` | week 4 |
+| Engine: single owner goroutine, concurrent submissions, snapshots | `internal/engine` | ✅ week 3 |
+| Durable journal (WAL) and crash recovery | `internal/journal` | ⏳ week 4 |
 | HTTP API | `internal/api` | week 5 (health checks only today) |
 
 The server binary starts, serves `/healthz` and `/readyz`, and shuts down
