@@ -1,0 +1,35 @@
+# Engine overhead benchmarks, 2026-10-20
+#
+# What:    state.Apply directly vs engine.Submit (1 caller) vs Submit (GOMAXPROCS callers)
+# Command: go test -run '^$' -bench . -benchmem -benchtime=200000x -count 3 ./internal/engine
+# Code:    the commit that adds this file (bench_test.go is in the same push)
+# Go:      go version go1.26.5 windows/amd64
+# Machine: laptop, other apps running, no CPU pinning
+# Command used: IOC buy into an empty book (reserve 6 USDT, release it; 2 journals)
+#
+# Reading the numbers:
+# - Apply ~0.9-1.1 us is the state machine alone (6 allocs: journals, result, dedupe entry).
+# - Submit ~2.7 us adds ~1.7 us of handoff: the owner goroutine is woken for each
+#   command and the caller is woken for each reply, plus the reply channel, the
+#   request and a new Snapshot (3 more allocs).
+# - SubmitParallel ~2.0-2.1 us per command is FASTER than one caller: with 8
+#   callers the queue is rarely empty, so the owner rarely sleeps and wakes.
+#   It is still one writer; this is less wake-up cost, not parallel execution.
+# - In-memory only. From week 4 every command also waits for a WAL fsync, which
+#   will dominate. Fixed iteration count because the dedupe table grows with b.N.
+#
+goos: windows
+goarch: amd64
+pkg: github.com/SrijitGyawali/Centralized-Exchange/internal/engine
+cpu: 11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz
+BenchmarkApplyDirect-8      	  200000	       898.4 ns/op	     736 B/op	       6 allocs/op
+BenchmarkApplyDirect-8      	  200000	       961.3 ns/op	     736 B/op	       6 allocs/op
+BenchmarkApplyDirect-8      	  200000	      1102 ns/op	     736 B/op	       6 allocs/op
+BenchmarkSubmit-8           	  200000	      2737 ns/op	    1008 B/op	       9 allocs/op
+BenchmarkSubmit-8           	  200000	      2648 ns/op	    1008 B/op	       9 allocs/op
+BenchmarkSubmit-8           	  200000	      2683 ns/op	    1008 B/op	       9 allocs/op
+BenchmarkSubmitParallel-8   	  200000	      1980 ns/op	    1008 B/op	       9 allocs/op
+BenchmarkSubmitParallel-8   	  200000	      2134 ns/op	    1008 B/op	       9 allocs/op
+BenchmarkSubmitParallel-8   	  200000	      2079 ns/op	    1008 B/op	       9 allocs/op
+PASS
+ok  	github.com/SrijitGyawali/Centralized-Exchange/internal/engine	4.289s
