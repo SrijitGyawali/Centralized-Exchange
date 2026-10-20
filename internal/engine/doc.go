@@ -1,32 +1,39 @@
 // Package engine runs the single goroutine that owns all trading state and
-// turns concurrent requests into one ordered, durable sequence of
-// transitions.
+// turns concurrent requests into one ordered sequence of transitions
+// (ADR-0001), with the request lifecycle defined in ADR-0005.
 //
-// # The run loop (weeks 3-5)
+//	many goroutines                  ONE owner goroutine (Run)
+//	───────────────                  ─────────────────────────
+//	Submit(ctx, …) ─┐                for req := range intake {
+//	Submit(ctx, …) ─┼─► bounded ──►      Seq++                 ← fairness point
+//	Query(ctx, …)  ─┘   intake           state.Apply(cmd)      ← pure transition
+//	                    (FIFO)           publish Snapshot      ← atomic pointer
+//	                                     reply (1-slot chan)
+//	Snapshot() ◄──── lock-free read  }
 //
-//	for {
-//	    batch := take commands from the bounded intake channel
-//	    assign each one Seq and a server timestamp   // fairness point
-//	    journal.Append(batch); journal.Sync()        // durability point
-//	    for each cmd: result := state.Apply(cmd)     // pure transition
-//	    send result on that request's 1-slot reply channel
-//	    publish an immutable read snapshot tagged with the applied seq
-//	}
+// Week 4 inserts "append to the WAL and fsync" between Seq++ and Apply,
+// which makes every reply mean durable AND applied.
 //
 // # Concurrency design
 //
-//   - Ownership replaces locking. Only this goroutine reads or writes State,
-//     so State has no mutex. Other goroutines communicate with it through
-//     channels and receive copies.
-//   - The intake channel is bounded. When it is full, submit fails fast so
-//     the API can answer 503 before the command is admitted.
-//   - Reply channels have a buffer of 1, so the engine never blocks on a
-//     client that has gone away (no goroutine leak, no stalled matching).
-//   - A request context being canceled stops the *caller* from waiting. It
-//     never cancels or rolls back an admitted command.
-//   - The engine may block on storage (Sync). Apply itself never blocks.
-//   - On a storage error the engine stops admitting work. It does not guess.
-//
-// The engine declares the small Journal interface it needs. Package journal
-// provides the concrete implementation, and tests can supply a fake.
+//   - Ownership replaces locking. Only the Run goroutine reads or writes the
+//     State, so State has no mutex. New takes ownership: after New, nobody
+//     else may touch the State.
+//   - Admission is non-blocking and bounded: a full queue returns
+//     ErrOverloaded immediately (HTTP 503) instead of growing memory.
+//   - Seq is assigned when the owner DEQUEUES a request. That is the
+//     documented fairness point; concurrent senders have no promised
+//     wall-clock order.
+//   - Reply channels have capacity 1: the owner's single send never blocks,
+//     so a caller that gave up can never stall trading or leak a goroutine.
+//   - Canceling a request's context only stops the CALLER waiting. An
+//     admitted command still runs; its caller gets ErrOutcomeUnknown and
+//     resolves it by retrying with the same idempotency key.
+//   - Reads: Snapshot is lock-free (immutable value behind an atomic
+//     pointer); Query runs on the owner, in order with commands, through
+//     the read-only StateReader interface.
+//   - Close stops admission and drains what was admitted. A mutex makes
+//     closing the queue safe while other goroutines may be sending.
+//   - Halting: if Apply fails or panics, the engine stops trading for good
+//     (Err says why). It never guesses its way past a broken invariant.
 package engine
