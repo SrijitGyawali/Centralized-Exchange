@@ -33,8 +33,8 @@ paper-trading environment with known failure limits.
                          ┌───────────────────────── cexd process ─────────────────────────┐
                          │                                                                │
  HTTP client ──► internal/api ──► bounded intake ──► internal/engine (the ONE owner)      │
- (REST, JSON)    validate, auth,   (buffered chan,    1. assign sequence + timestamp       │
-                 parse decimals    reject when full)  2. internal/journal: append + Sync ──┼──► data/wal/*.wal
+ (REST, JSON)    validate, auth,   (buffered chan,    1. assign sequence                   │
+                 parse decimals    reject when full)  2. internal/journal: append + Sync ──┼──► data/journal.wal
                          ▲                            3. internal/state.Apply (pure)       │      (authoritative)
                          │                            4. reply on a 1-slot channel         │
                          │                                     │                           │
@@ -46,7 +46,7 @@ paper-trading environment with known failure limits.
                          (separate goroutine, own replay state, transactional checkpoint)  │    (read model only,
                          └─────────────────────────────────────────────────────────────────┘     rebuildable)
 
- cmd/replay (offline CLI) ── reads data/wal/*.wal ── state.Apply ── prints state / explains an order
+ cmd/replay (offline CLI) ── reads data/journal.wal (read-only) ── state.Apply ── prints state / explains an order
 ```
 
 Key ideas:
@@ -76,7 +76,8 @@ Key ideas:
 | Commands | `internal/command` | Data-only command structs (`PlaceOrder`, `CancelOrder`, `Fund`) and their `Result`s. Shared by api, engine, journal and state. | 1-3 |
 | Order book | `internal/book` | Sorted price levels, FIFO queue per level, order-ID index, matching loop, depth copies | 1-2 |
 | State machine | `internal/state` | `State` (books, accounts, reservations, ledger, dedupe, config) and the pure `Apply(cmd) Result` transition | 3 |
-| Journal (WAL) | `internal/journal` | Frame encoding (magic, version, length, seq, payload, checksum), append + `Sync`, recovery reader, corruption handling | 4 |
+| Journal (WAL) | `internal/journal` | Canonical command codec; frames with magic, version, length, Seq and separate header/payload CRC-32C; append + `Sync`; recovery scan (torn tail truncated, corruption refused). See ADR-0006 | 4 |
+| Node | `internal/node` | Startup recovery (open journal, replay into a fresh state, check invariants, digest) and engine lifecycle. Used by `cexd`, the crash harness and tests | 4 |
 | Engine | `internal/engine` | Owner goroutine: intake queue, sequencing, group commit, calls `Apply`, delivers replies, publishes read snapshots, halts on storage errors | 3-5 |
 | HTTP API | `internal/api` | Routing, JSON validation, auth, ownership checks, rate limits, status-code mapping, health/readiness | 1 (health), 5 |
 | Market data | `internal/marketdata` | Sequenced depth snapshots, WebSocket fan-out, slow-consumer disconnect | 6 |
@@ -122,7 +123,7 @@ week 7), `migrations/` (SQL schema, week 6), `web/` (frontend, week 6).
 
 | Data | Where | Authoritative? | Survives restart via |
 |---|---|---|---|
-| Commands (every accepted request, including rejections) | `data/wal/NNNNNNNN.wal` (append-only files) | **Yes** | It *is* the durable record |
+| Commands (every sequenced command, including rejections and duplicates) | `data/journal.wal` (one append-only file; segments arrive with snapshots in Tier 2) | **Yes** | It *is* the durable record |
 | Books, balances, reservations, dedupe results, ID counters | Memory, inside `state.State` | Derived | Replaying the WAL (Tier 2: snapshot + WAL suffix) |
 | Snapshots (Tier 2) | `data/snapshots/` | Derived, a recovery shortcut | Checksummed and atomically published |
 | Orders, trades, ledger lines, balances for queries | PostgreSQL tables | **No**, a projection | Rebuild from WAL; `projection_checkpoint` records progress |
@@ -152,6 +153,7 @@ Planned PostgreSQL tables (week 6): `orders`, `trades`, `ledger_journals`,
 │   ├── state/                #   Pure: full state + Apply
 │   ├── journal/              #   I/O:  WAL files
 │   ├── engine/               #   Concurrency: the single owner goroutine
+│   ├── node/                 #   Wiring: startup recovery + engine lifecycle
 │   ├── api/                  #   I/O:  HTTP handlers
 │   ├── marketdata/           #   I/O:  WebSocket feeds
 │   ├── projector/            #   I/O:  PostgreSQL read model
