@@ -1,0 +1,52 @@
+# Durability cost benchmarks, 2026-10-21
+#
+# What:     encode one journal frame; append + fsync one frame; one durable Submit
+#           through a real node (queue, Seq, append + fsync, Apply, snapshot, reply).
+# Commands: go test -run '^$' -bench EncodeFrame -benchmem -count 3 ./internal/journal
+#           go test -run '^$' -bench AppendSync -benchmem -benchtime=2000x -count 3 ./internal/journal
+#           go test -run '^$' -bench . -benchmem -benchtime=2000x -count 3 ./internal/node
+# Code:     the commit that adds this file
+# Go:       go version go1.26.5 windows/amd64
+# Machine:  i7-1165G7 laptop, Windows, internal NVMe SSD, default write caching;
+#           File.Sync = FlushFileBuffers. Other apps running; no pinning.
+#
+# Reading the numbers:
+# - EncodeFrame ~35-63 ns, 0 allocs: building a frame is negligible.
+# - AppendSync ~1.4-1.5 ms: almost all of it is waiting for the device to
+#   confirm the write (fsync).
+# - SubmitDurable ~1.4-1.9 ms vs ~2.7 us for engine.Submit without a journal
+#   (evidence/bench/2026-10-20-engine-overhead.txt): durability is ~500x the
+#   rest of the work. One fsync per command caps this machine at roughly 700
+#   durable commands per second for a single writer.
+# - This motivates group commit (week 5): one fsync for a batch of commands.
+# - Different disks, OSes and cache settings will give very different numbers;
+#   a laptop SSD with write caching may also acknowledge before data is on
+#   stable media. See ADR-0006 for what is and is not claimed.
+#
+goos: windows
+goarch: amd64
+pkg: github.com/SrijitGyawali/Centralized-Exchange/internal/journal
+cpu: 11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz
+BenchmarkEncodeFrame-8   	35650200	        35.45 ns/op	       0 B/op	       0 allocs/op
+BenchmarkEncodeFrame-8   	35794717	        36.74 ns/op	       0 B/op	       0 allocs/op
+BenchmarkEncodeFrame-8   	31102989	        62.98 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/SrijitGyawali/Centralized-Exchange/internal/journal	5.432s
+goos: windows
+goarch: amd64
+pkg: github.com/SrijitGyawali/Centralized-Exchange/internal/journal
+cpu: 11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz
+BenchmarkAppendSync-8   	    2000	   1509836 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAppendSync-8   	    2000	   1437682 ns/op	       0 B/op	       0 allocs/op
+BenchmarkAppendSync-8   	    2000	   1363485 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/SrijitGyawali/Centralized-Exchange/internal/journal	9.597s
+goos: windows
+goarch: amd64
+pkg: github.com/SrijitGyawali/Centralized-Exchange/internal/node
+cpu: 11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz
+BenchmarkSubmitDurable-8   	    2000	   1878075 ns/op	    1187 B/op	       7 allocs/op
+BenchmarkSubmitDurable-8   	    2000	   1425485 ns/op	    1187 B/op	       7 allocs/op
+BenchmarkSubmitDurable-8   	    2000	   1408263 ns/op	    1187 B/op	       7 allocs/op
+PASS
+ok  	github.com/SrijitGyawali/Centralized-Exchange/internal/node	10.643s
