@@ -2,16 +2,15 @@
 //
 // This file is the composition root: the one place that reads the
 // environment, constructs every component and wires them together. It
-// contains no business logic. As the project grows, run() gains steps in this
-// order:
+// contains no business logic. run() goes through these steps:
 //
 //  1. load config
-//  2. open the journal and replay it into state (week 4)
-//  3. start the engine goroutine (week 3)
-//  4. start projector and market data (week 6)
-//  5. serve HTTP
-//  6. on SIGINT/SIGTERM shut down in reverse order: stop admitting, drain the
-//     engine, flush the journal, then close everything else
+//  2. recover: open the journal in DataDir, replay it into a fresh state,
+//     check every invariant, start the engine (node.Open)
+//  3. (week 6) start projector and market data
+//  4. serve HTTP; /readyz answers 200 once recovery has succeeded
+//  5. on SIGINT/SIGTERM shut down in reverse order: stop HTTP, then stop
+//     admitting, drain the engine and close the journal
 package main
 
 import (
@@ -29,6 +28,8 @@ import (
 
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/api"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/config"
+	"github.com/SrijitGyawali/Centralized-Exchange/internal/engine"
+	"github.com/SrijitGyawali/Centralized-Exchange/internal/node"
 )
 
 // version is overwritten at build time:
@@ -66,12 +67,33 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 		"data_dir", cfg.DataDir,
 	)
 
-	// Until the engine exists the server is alive but never ready, which is
-	// exactly what a real deployment should report while replay is running.
-	ready := func() error { return errors.New("engine not started") }
+	// Recovery: replay the journal into a fresh state and start the engine.
+	// If the journal is corrupt or the recovered state breaks an invariant,
+	// the server refuses to start rather than trade on a wrong state.
+	nd, err := node.Open(node.Config{Dir: cfg.DataDir, Engine: engine.DefaultConfig()})
+	if err != nil {
+		return fmt.Errorf("recovery: %w", err)
+	}
+	// Deferred calls run in reverse order of registration. This one is
+	// registered BEFORE the HTTP server exists, so it runs AFTER the server
+	// has shut down: no request can arrive while the engine drains.
+	defer func() {
+		if err := nd.Close(); err != nil {
+			logger.Error("closing the node", "err", err)
+			return
+		}
+		logger.Info("engine drained and journal closed")
+	}()
+	logger.Info("recovered",
+		"commands", nd.Recovery.Commands,
+		"last_seq", nd.Recovery.LastSeq,
+		"truncated_bytes", nd.Recovery.TruncatedBytes,
+		"digest", fmt.Sprintf("%x", nd.Recovery.Digest),
+		"took", nd.Recovery.Took.String(),
+	)
 
 	srv := &http.Server{
-		Handler: api.NewRouter(ready),
+		Handler: api.NewRouter(nd.Ready), // ready unless the engine has halted
 		// Timeouts protect against slow or malicious clients holding
 		// connections open forever. The zero value means "no timeout",
 		// which is a classic production bug.
