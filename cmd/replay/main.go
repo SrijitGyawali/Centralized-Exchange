@@ -1,43 +1,97 @@
-// Command replay is the offline inspector. It reads the journal, replays it
-// through the same deterministic state.Apply the server uses, and reports
-// what happened.
+// Command replay is the offline inspector. It reads a journal WITHOUT
+// changing it (no repair, no truncation), replays it through the same
+// state.Apply the server uses, and reports what it finds.
 //
-// Planned usage (week 4, polished in week 8):
+//	replay -data-dir ./data              # replay everything
+//	replay -data-dir ./data -to-seq 6    # the state as it was right after seq 6
 //
-//	replay -data-dir ./data                  # replay everything, print state digest
-//	replay -data-dir ./data -to-seq 1200     # stop at sequence 1200
-//	replay -data-dir ./data -explain 42      # trace order 42: request, priority,
-//	                                         # fills, reservations, ledger postings
+// It prints the journal's health (frames, any torn tail), whether every
+// invariant holds, the state digest (compare it with the "digest" the
+// server logs at startup), balances and the top of the book.
 //
-// Because it never opens a network port or the live server's state, it is
-// safe to run against a copy of production data during an incident.
+// It never opens a network port and never touches a running server, so it
+// is safe to run against a COPY of production data during an incident.
+// Tracing a single order ("-explain") arrives in week 8.
 package main
 
 import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
+
+	"github.com/SrijitGyawali/Centralized-Exchange/internal/command"
+	"github.com/SrijitGyawali/Centralized-Exchange/internal/journal"
+	"github.com/SrijitGyawali/Centralized-Exchange/internal/state"
 )
 
 func main() {
-	if err := run(os.Args[1:]); err != nil {
+	if err := run(os.Args[1:], os.Stdout); err != nil {
 		fmt.Fprintf(os.Stderr, "replay: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run(args []string) error {
+// errStop ends the scan early at -to-seq. It is a sentinel, not a failure.
+var errStop = errors.New("reached -to-seq")
+
+func run(args []string, out io.Writer) error {
 	// A dedicated FlagSet (instead of the global flag.CommandLine) keeps
 	// run testable: tests can call run with any argument list.
 	fs := flag.NewFlagSet("replay", flag.ContinueOnError)
-	dataDir := fs.String("data-dir", "./data", "directory containing the WAL")
+	dataDir := fs.String("data-dir", "./data", "directory containing "+journal.FileName)
 	toSeq := fs.Uint64("to-seq", 0, "stop after this sequence (0 = replay everything)")
-	explain := fs.Uint64("explain", 0, "order ID to explain (0 = none)")
+	explain := fs.Uint64("explain", 0, "order ID to explain (arrives in week 8)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	if *explain != 0 {
+		return errors.New("-explain arrives in week 8")
+	}
 
-	_, _, _ = dataDir, toSeq, explain
-	return errors.New("not implemented yet: arrives with the journal in week 4")
+	path := filepath.Join(*dataDir, journal.FileName)
+	f, err := os.Open(path) // read-only: replay must never modify the evidence
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	st := state.New()
+	res, err := journal.Scan(f, func(c command.Command) error {
+		if *toSeq != 0 && uint64(c.Seq) > *toSeq {
+			return errStop
+		}
+		_, err := st.Apply(c)
+		return err
+	})
+	stopped := errors.Is(err, errStop)
+	if err != nil && !stopped {
+		return err
+	}
+
+	fmt.Fprintf(out, "journal    %s\n", path)
+	if stopped {
+		fmt.Fprintf(out, "stopped    after seq %d (-to-seq)\n", st.LastSeq())
+	} else {
+		fmt.Fprintf(out, "frames     %d valid, last seq %d, %d bytes\n", res.Frames, res.LastSeq, res.ValidBytes)
+		if res.TornBytes > 0 {
+			fmt.Fprintf(out, "torn tail  %d bytes: a crash cut the last write short; the server drops them on its next start\n", res.TornBytes)
+		}
+	}
+	invariants := "ok"
+	if err := st.CheckInvariants(); err != nil {
+		invariants = "BROKEN: " + err.Error()
+	}
+	fmt.Fprintf(out, "state      seq %d, invariants %s\n", st.LastSeq(), invariants)
+	fmt.Fprintf(out, "digest     %x\n", st.Digest())
+
+	fmt.Fprintln(out, "\nbalances")
+	for _, b := range st.Balances() {
+		fmt.Fprintf(out, "  user %-4d %-4v  available %s  reserved %s\n",
+			b.User, b.Asset, b.Asset.Format(b.Available), b.Asset.Format(b.Reserved))
+	}
+	fmt.Fprintf(out, "\nbook (top 10 levels per side)\n%v", st.Depth(10))
+	return nil
 }
