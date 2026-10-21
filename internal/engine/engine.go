@@ -20,6 +20,30 @@ type Config struct {
 	// SnapshotDepth is how many price levels per side each published
 	// Snapshot holds.
 	SnapshotDepth int
+	// Journal makes commands durable. nil means no durability (unit tests
+	// and benchmarks of the engine alone).
+	Journal Journal
+	// Hooks are test-only crash points; production leaves them nil.
+	Hooks Hooks
+}
+
+// Journal is what the engine needs from durable storage, and nothing more.
+// It is declared here, by its consumer, so tests can substitute a tiny fake.
+// Package journal provides the real implementation.
+//
+// The contract: Append returns nil only after cmd is written AND synced, so
+// it survives a crash. Any error means the command may or may not be on
+// disk.
+type Journal interface {
+	Append(cmd command.Command) error
+}
+
+// Hooks are failpoints for the crash harness (tests/crash).
+type Hooks struct {
+	// AfterApply runs after a command is applied and its snapshot
+	// published, but BEFORE the reply is sent. A crash here leaves a durable,
+	// applied command whose caller never heard back.
+	AfterApply func(seq domain.Seq)
 }
 
 // DefaultConfig returns sizes suitable for local development.
@@ -131,6 +155,19 @@ func (e *Engine) handle(req request) {
 
 	e.seq++
 	req.cmd.Seq = e.seq // the fairness point: order of dequeue = order of Seq
+
+	// Durability BEFORE effect: the command is written and fsynced before
+	// it changes anything, so a reply always means "durable AND applied".
+	// If the append fails, the command may be partly or fully on disk, and
+	// the engine cannot know. It halts; a restart re-reads the journal and
+	// finds out.
+	if e.cfg.Journal != nil {
+		if err := e.cfg.Journal.Append(req.cmd); err != nil {
+			e.halt(fmt.Errorf("engine: journal append seq %d: %w", e.seq, err))
+			return
+		}
+	}
+
 	fx, err := e.st.Apply(req.cmd)
 	if err != nil {
 		e.halt(fmt.Errorf("engine: apply seq %d: %w", e.seq, err))
@@ -139,6 +176,9 @@ func (e *Engine) handle(req request) {
 	// Publish BEFORE replying: by the time a caller holds its result, the
 	// snapshot already includes it (read-your-writes for market data).
 	e.publish()
+	if h := e.cfg.Hooks.AfterApply; h != nil {
+		h(e.seq)
+	}
 	req.reply <- fx.Result // never blocks: capacity 1, exactly one send
 }
 
