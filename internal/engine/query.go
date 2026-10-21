@@ -37,6 +37,8 @@ type StateReader interface {
 	Depth(n int) book.Depth
 	LastSeq() domain.Seq
 	CheckInvariants() error
+	Digest() [32]byte
+	Balances() []state.BalanceRow
 }
 
 // A compile-time assertion: this line fails to build if *state.State ever
