@@ -6,13 +6,17 @@
 //	───────────────                  ─────────────────────────
 //	Submit(ctx, …) ─┐                for req := range intake {
 //	Submit(ctx, …) ─┼─► bounded ──►      Seq++                 ← fairness point
-//	Query(ctx, …)  ─┘   intake           state.Apply(cmd)      ← pure transition
-//	                    (FIFO)           publish Snapshot      ← atomic pointer
+//	Query(ctx, …)  ─┘   intake           Journal.Append        ← durability point (write + fsync)
+//	                    (FIFO)           state.Apply(cmd)      ← pure transition
+//	                                     publish Snapshot      ← atomic pointer
 //	                                     reply (1-slot chan)
 //	Snapshot() ◄──── lock-free read  }
 //
-// Week 4 inserts "append to the WAL and fsync" between Seq++ and Apply,
-// which makes every reply mean durable AND applied.
+// Because the journal append comes BEFORE Apply, every reply means durable
+// AND applied. If the append fails, the engine halts: the command may or may
+// not be on disk, and only a restart that re-reads the journal can tell.
+// The Journal interface is declared here (one method), so tests use a fake;
+// package journal provides the real one, and package node wires them.
 //
 // # Concurrency design
 //
