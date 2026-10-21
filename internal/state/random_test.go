@@ -46,6 +46,8 @@ func assertReplayIsIdentical(t *testing.T, h *harness) {
 		t.Fatal("replayed order book differs")
 	case fresh.lastOrder != h.s.lastOrder || fresh.lastSeq != h.s.lastSeq || len(fresh.dedupe) != len(h.s.dedupe):
 		t.Fatal("replayed counters or dedupe table differ")
+	case fresh.Digest() != h.s.Digest():
+		t.Fatal("replayed state has a different digest")
 	}
 }
 
