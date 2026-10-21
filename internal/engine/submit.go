@@ -32,6 +32,11 @@ func (e *Engine) Submit(ctx context.Context, user domain.UserID, key string, bod
 	if body == nil {
 		return command.Result{}, ErrInvalidCommand
 	}
+	// Checked here, before admission, so nothing unbounded is ever written
+	// to the journal. (The state checks it again, which is defence in depth.)
+	if len(key) == 0 || len(key) > command.MaxKeyLen {
+		return command.Result{}, fmt.Errorf("%w: idempotency key must be 1..%d bytes, got %d", ErrInvalidCommand, command.MaxKeyLen, len(key))
+	}
 	if err := ctx.Err(); err != nil {
 		return command.Result{}, err // not admitted: plainly failed
 	}
