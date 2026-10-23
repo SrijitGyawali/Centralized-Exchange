@@ -1,6 +1,7 @@
 package journal
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -51,5 +52,33 @@ func BenchmarkAppendSync(b *testing.B) {
 		if err := j.Append(c); err != nil {
 			b.Fatal(err)
 		}
+	}
+}
+
+// BenchmarkAppendBatch reports cost per command, amortizing one sync over frames.
+func BenchmarkAppendBatch(b *testing.B) {
+	for _, n := range []int{1, 64} {
+		b.Run(fmt.Sprintf("BatchSize%d", n), func(b *testing.B) {
+			j, _, err := Open(filepath.Join(b.TempDir(), FileName), Options{}, nil)
+			if err != nil {
+				b.Fatal(err)
+			}
+			defer j.Close()
+			cmds := make([]command.Command, n)
+			var seq domain.Seq
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				for k := range cmds {
+					seq++
+					cmds[k] = benchCmd
+					cmds[k].Seq = seq
+				}
+				if err := j.AppendBatch(cmds); err != nil {
+					b.Fatal(err)
+				}
+			}
+			b.ReportMetric(float64(b.Elapsed().Nanoseconds())/float64(b.N*n), "ns/command")
+		})
 	}
 }
