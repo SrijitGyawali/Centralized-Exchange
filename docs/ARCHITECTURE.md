@@ -211,25 +211,35 @@ Planned PostgreSQL tables (week 6): `orders`, `trades`, `ledger_journals`,
 
 ---
 
-## 7. HTTP API (Tier 1 target, week 5)
+## 7. HTTP API (implemented, week 5)
 
 | Method & path | Purpose | Notes |
 |---|---|---|
 | `GET /healthz` | Liveness: the process is running | Day 1 |
-| `GET /readyz` | Readiness: replay done, journal writable, trading enabled | Day 1 (always 503 until the engine exists) |
-| `POST /v1/orders` | Place an order | Body: `symbol`, `side`, `type`, `time_in_force`, `price`, `quantity` (strings), `client_key`. Returns order ID, status, `applied_seq` |
+| `GET /readyz` | Readiness: replay done, trading engine not halted | 503 after a storage failure |
+| `GET /v1/session` | Verify a provisioned bearer token | Returns user ID and admin role |
+| `POST /v1/orders` | Place an order | Body: `symbol`, `side`, `type`, `time_in_force`, `price`, `quantity` (strings). `Idempotency-Key` header; returns `order_id`, `outcome`, `seq` |
 | `DELETE /v1/orders/{id}` | Cancel (sequenced command) | Requires a request key, owner only |
-| `GET /v1/orders/{id}` | Order status | Owner only |
+| `GET /v1/orders/{id}` | Resting order status | Owner only; filled/canceled/foreign/unknown IDs return 404 |
 | `GET /v1/requests/{client_key}` | Result of an earlier request | Lost-response recovery |
-| `GET /v1/balances` | Available and reserved per asset | Tagged `as_of_seq` |
-| `GET /v1/book?symbol=BTC-USDT` | Depth snapshot | Tagged `as_of_seq` |
+| `GET /v1/balances` | Available and reserved per asset | Tagged `seq` |
+| `GET /v1/book?symbol=BTC-USDT` | Depth snapshot | Tagged `seq` |
+| `POST /v1/admin/fund` | Create simulated money | Admin only; `user_id`, `asset`, `amount` strings |
 | `GET /v1/stream` (WebSocket) | Depth snapshots, later incremental updates | Week 6 |
 
-Status codes: `400` malformed, `401`/`403` auth, `409` same key with a
-different payload, `429` rate limited, `503` overloaded before admission.
-A *business* rejection (for example insufficient funds) is a durable,
-typed result and not an HTTP error. Money and large IDs are JSON
-**strings**.
+All `/v1` routes require bearer authentication. Auth precedes per-user rate
+limiting and strict, bounded JSON decoding. Status codes: `200` accepted/read,
+`400` invalid input, `401`/`403` auth, `404` unknown/private order or request,
+`409` key conflict, `413` oversized body, `415` content type, `422` durable
+business rejection, `429` rate limited, `503` unavailable, `504` deadline.
+Admitted failures explicitly report `outcome_unknown`; clients reuse their key.
+Money and large IDs are JSON **strings**. See [ADR-0007](adr/0007-authenticated-http-api.md).
+
+The engine groups immediately available queued commands, up to BatchSize,
+without a timer. Queries split batches and retain queue order. Production
+AppendBatch validates all frames, writes once and syncs once before Apply or
+reply. Failures halt the engine; recovery can replay a complete batch prefix.
+The WAL frame format is unchanged. See [ADR-0008](adr/0008-opportunistic-group-commit.md).
 
 ---
 
