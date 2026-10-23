@@ -35,3 +35,6 @@ jobs:
 
       - name: test (race detector)
         run: go test -race -count=1 ./...
+
+      - name: week 5 HTTP crash and retry gate
+        run: go run ./tests/week5
