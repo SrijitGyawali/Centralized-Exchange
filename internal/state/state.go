@@ -88,6 +88,16 @@ func (s *State) Depth(n int) book.Depth { return s.book.Depth(n) }
 // LastSeq returns the Seq of the last command applied.
 func (s *State) LastSeq() domain.Seq { return s.lastSeq }
 
+// Lookup returns the original outcome for this user's key, without consuming
+// a sequence or marking it as a duplicate. The result is a deep copy.
+func (s *State) Lookup(user domain.UserID, key string) (command.Result, bool) {
+	entry, ok := s.dedupe[dedupeKey{user, key}]
+	if !ok {
+		return command.Result{}, false
+	}
+	return entry.result.Clone(), true
+}
+
 // reserveFor returns what an order must hold while it rests: for a buy, the
 // USDT notional of its remaining quantity at its LIMIT price; for a sell,
 // its remaining BTC lots. This is the "reserve function" every open order's

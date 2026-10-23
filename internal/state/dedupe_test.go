@@ -9,6 +9,38 @@ import (
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/domain"
 )
 
+func TestLookupIsPrivateImmutableAndReadOnly(t *testing.T) {
+	h := newHarness(t)
+	h.fund(alice, domain.USDT, usdt(10000))
+	h.fund(bob, domain.BTC, domain.LotsPerBTC)
+	h.do(bob, sell(60000, 1000, domain.GTC))
+	original := h.apply(alice, "lost-response", buy(60000, 1000, domain.GTC)).Result
+	before := h.s.Digest()
+	r, ok := h.s.Lookup(alice, "lost-response")
+	if !ok || r.Seq != original.Seq || r.Order != original.Order || r.Duplicate || len(r.Fills) != 1 {
+		t.Fatalf("lookup: %+v, %v", r, ok)
+	}
+	r.Fills[0].Qty = 1
+	again, _ := h.s.Lookup(alice, "lost-response")
+	if again.Fills[0].Qty != 1000 {
+		t.Fatal("lookup leaked mutable fills")
+	}
+	if _, ok := h.s.Lookup(bob, "lost-response"); ok {
+		t.Fatal("lookup leaked another user's result")
+	}
+	if _, ok := h.s.Lookup(alice, "missing"); ok {
+		t.Fatal("missing key found")
+	}
+	if before != h.s.Digest() {
+		t.Fatal("lookup changed state")
+	}
+	rejected := h.apply(alice, "reject", buy(60000, 1000, domain.GTC)).Result
+	stored, ok := h.s.Lookup(alice, "reject")
+	if !ok || stored.Rejected != rejected.Rejected || stored.Accepted() {
+		t.Fatal("rejection was not recoverable")
+	}
+}
+
 // These tests cover "handling repeated requests safely". The story behind
 // all of them: a client sends a request, the exchange carries it out, and
 // the response is lost on the network. The client cannot know whether it
