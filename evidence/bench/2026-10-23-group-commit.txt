@@ -1,0 +1,46 @@
+Week 5 group commit measurements, 2026-10-23
+Go 1.26.5, Windows amd64, local persistent filesystem, ordinary temporary WAL files.
+Commands run sequentially after the normal and race suites completed.
+Journal ns/op is per batch; ns/command is the comparable amortized cost.
+Node ns/op is per command, with at least 64 concurrent callers (GOMAXPROCS rounded).
+Each node command is a funded IOC order with no match; includes queue, WAL,
+apply, snapshots and reply. Journal-only records are encoded place commands.
+These are local measurements, not a service SLA or a power-loss durability claim.
+
+Command: go test -run '^$' -bench '^BenchmarkAppendBatch$' -benchmem -benchtime=512x -count=3 ./internal/journal
+goos: windows
+goarch: amd64
+pkg: github.com/SrijitGyawali/Centralized-Exchange/internal/journal
+cpu: 11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz
+BenchmarkAppendBatch/BatchSize1-8         	     512	   1969558 ns/op	   1969256 ns/command	       0 B/op	       0 allocs/op
+BenchmarkAppendBatch/BatchSize1-8         	     512	   1207720 ns/op	   1207499 ns/command	       0 B/op	       0 allocs/op
+BenchmarkAppendBatch/BatchSize1-8         	     512	   1217436 ns/op	   1217215 ns/command	       0 B/op	       0 allocs/op
+BenchmarkAppendBatch/BatchSize64-8        	     512	   1329283 ns/op	     20766 ns/command	      17 B/op	       0 allocs/op
+BenchmarkAppendBatch/BatchSize64-8        	     512	   1256914 ns/op	     19629 ns/command	      17 B/op	       0 allocs/op
+BenchmarkAppendBatch/BatchSize64-8        	     512	   1327486 ns/op	     20734 ns/command	      17 B/op	       0 allocs/op
+PASS
+ok  	github.com/SrijitGyawali/Centralized-Exchange/internal/journal	5.504s
+
+Command: go test -run '^$' -bench '^BenchmarkSubmitDurableConcurrent$' -benchmem -benchtime=2048x -count=3 ./internal/node
+goos: windows
+goarch: amd64
+pkg: github.com/SrijitGyawali/Centralized-Exchange/internal/node
+cpu: 11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz
+BenchmarkSubmitDurableConcurrent/BatchSize1-8         	    2048	   1219735 ns/op	    1279 B/op	      10 allocs/op
+BenchmarkSubmitDurableConcurrent/BatchSize1-8         	    2048	   1262400 ns/op	    1267 B/op	      10 allocs/op
+BenchmarkSubmitDurableConcurrent/BatchSize1-8         	    2048	   1249980 ns/op	    1276 B/op	      10 allocs/op
+BenchmarkSubmitDurableConcurrent/BatchSize64-8        	    2048	     30501 ns/op	    1331 B/op	      10 allocs/op
+BenchmarkSubmitDurableConcurrent/BatchSize64-8        	    2048	     32621 ns/op	    1334 B/op	      10 allocs/op
+BenchmarkSubmitDurableConcurrent/BatchSize64-8        	    2048	     33457 ns/op	    1346 B/op	      10 allocs/op
+PASS
+ok  	github.com/SrijitGyawali/Centralized-Exchange/internal/node	9.747s
+
+Interpretation (medians across the three runs):
+- Journal Batch1: 1,217,215 ns/command; Batch64: 20,734 ns/command (~58.7x).
+- Real concurrent node Batch1: 1,249,980 ns/command; Batch64: 32,621 ns/command (~38.3x).
+- Results apply to this 64-caller IOC workload and local storage. They do not
+  measure per-request p95/p99 latency or production exchange capacity.
+- Early exploratory 128-iteration runs with eight callers were noisy and did
+  not show a node improvement. The recorded comparison above uses more samples,
+  three repetitions, 64 callers and the same settings for both batch sizes.
+- No artificial batching wait was added to obtain these measurements.
