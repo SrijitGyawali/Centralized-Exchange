@@ -6,6 +6,34 @@ import (
 	"testing"
 )
 
+func TestParseAmount(t *testing.T) {
+	for _, tc := range []struct {
+		asset Asset
+		input string
+		want  int64
+		err   error
+	}{
+		{BTC, "0.1", 1000, nil}, {USDT, "0.1", 100000, nil},
+		{BTC, "11", 110000, nil}, {BTC, "21000000", BTC.MaxSupply(), nil},
+		{USDT, "1000000000", USDT.MaxSupply(), nil},
+		{USDT, "0.000001", 1, nil}, {BTC, "0.0001", 1, nil},
+		{BTC, "21000000.0001", 0, ErrOutOfRange},
+		{USDT, "1000000000.000001", 0, ErrOutOfRange},
+		{BTC, "0", 0, ErrOutOfRange}, {USDT, "0", 0, ErrOutOfRange},
+		{BTC, "0.00001", 0, ErrPrecision}, {USDT, "0.0000001", 0, ErrPrecision},
+		{Asset(0), "1", 0, ErrOutOfRange}, {BTC, "1e2", 0, ErrSyntax},
+		{USDT, "-1", 0, ErrSyntax}, {USDT, "01", 0, ErrSyntax},
+		{USDT, "99999999999999999999", 0, ErrOutOfRange},
+	} {
+		t.Run(tc.asset.String()+"/"+tc.input, func(t *testing.T) {
+			got, err := ParseAmount(tc.asset, tc.input)
+			if got != tc.want || !errors.Is(err, tc.err) {
+				t.Fatalf("got %d, %v; want %d, %v", got, err, tc.want, tc.err)
+			}
+		})
+	}
+}
+
 // TestParseQty is table-driven: every row is one input and its expected
 // result. Error rows name the sentinel error expected, and errors.Is checks it,
 // so the test checks the *kind* of failure and not the exact message text.

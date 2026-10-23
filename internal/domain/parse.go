@@ -6,6 +6,26 @@ import (
 	"strings"
 )
 
+// ParseAmount parses positive test funding in the asset's smallest unit.
+// Unlike ParseQty, funding is bounded by the asset supply, not order size.
+func ParseAmount(asset Asset, s string) (int64, error) {
+	decimals := 6 // USDT atoms
+	if !asset.Valid() {
+		return 0, fmt.Errorf("asset: %w", ErrOutOfRange)
+	}
+	if asset == BTC {
+		decimals = QtyDecimals
+	}
+	v, err := parseFixed(s, decimals)
+	if err != nil {
+		return 0, fmt.Errorf("%s amount: %w", asset, err)
+	}
+	if v <= 0 || v > asset.MaxSupply() {
+		return 0, fmt.Errorf("%s amount: %w", asset, ErrOutOfRange)
+	}
+	return v, nil
+}
+
 // ParseQty converts a decimal BTC string such as "0.1" into lots.
 //
 //	ParseQty("0.1")    → 1000
