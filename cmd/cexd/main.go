@@ -24,7 +24,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/api"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/config"
@@ -70,7 +69,9 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 	// Recovery: replay the journal into a fresh state and start the engine.
 	// If the journal is corrupt or the recovered state breaks an invariant,
 	// the server refuses to start rather than trade on a wrong state.
-	nd, err := node.Open(node.Config{Dir: cfg.DataDir, Engine: engine.DefaultConfig()})
+	ecfg := engine.DefaultConfig()
+	ecfg.BatchSize = cfg.BatchSize
+	nd, err := node.Open(node.Config{Dir: cfg.DataDir, Engine: ecfg})
 	if err != nil {
 		return fmt.Errorf("recovery: %w", err)
 	}
@@ -92,15 +93,22 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 		"took", nd.Recovery.Took.String(),
 	)
 
+	tokens := make(map[string]api.Principal, len(cfg.Tokens))
+	for token, identity := range cfg.Tokens {
+		tokens[token] = api.Principal{User: identity.User, Admin: identity.Admin}
+	}
 	srv := &http.Server{
-		Handler: api.NewRouter(nd.Ready), // ready unless the engine has halted
+		Handler: api.NewServer(nd.Engine, nd.Ready, api.Config{
+			Tokens: tokens, RatePerSecond: cfg.RatePerSecond, Burst: cfg.RateBurst,
+			RequestTimeout: cfg.RequestTimeout,
+		}),
 		// Timeouts protect against slow or malicious clients holding
 		// connections open forever. The zero value means "no timeout",
 		// which is a classic production bug.
-		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       10 * time.Second,
-		WriteTimeout:      10 * time.Second,
-		IdleTimeout:       60 * time.Second,
+		ReadHeaderTimeout: cfg.ReadHeaderTimeout,
+		ReadTimeout:       cfg.ReadTimeout,
+		WriteTimeout:      cfg.WriteTimeout,
+		IdleTimeout:       cfg.IdleTimeout,
 		ErrorLog:          slog.NewLogLogger(logger.Handler(), slog.LevelError),
 	}
 
