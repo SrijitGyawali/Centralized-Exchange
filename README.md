@@ -1,7 +1,8 @@
 # Centralized Exchange (CEX) Simulator in Go
 
 A deterministic spot-exchange simulator with an auditable ledger, a durable
-command journal, a replay inspector and measured crash recovery. It is
+command journal, an authenticated HTTP API, group commit, a replay inspector
+and measured crash recovery. It is
 built as a serious systems project for learning production Go.
 
 > **Paper trading only.** Simulated funds via explicit funding commands. No
@@ -9,10 +10,11 @@ built as a serious systems project for learning production Go.
 
 ## Status
 
-**Week 4 complete.** The exchange is durable: every command is written and
-fsynced to a journal before it takes effect, and a restart rebuilds the
-exact state from it, proven by a crash harness that kills the process at
-five points. It is not reachable over HTTP yet (week 5).
+**Week 5 implemented.** HTTP clients can authenticate with provisioned bearer
+tokens, place/cancel orders, query private results and balances, read the book,
+and fund simulated accounts with an admin token. Queued commands share a journal
+write and fsync before any apply or reply. A lone request has no batching delay.
+Restart replays the same WAL format, and retries keep their original outcome.
 
 | Piece | Package | State |
 |---|---|---|
@@ -22,7 +24,7 @@ five points. It is not reachable over HTTP yet (week 5).
 | Money: reservations, double-entry ledger, settlement, idempotent retries | `internal/state` | ✅ week 3 |
 | Engine: single owner goroutine, concurrent submissions, snapshots | `internal/engine` | ✅ week 3 |
 | Durable journal (WAL), startup recovery, replay inspector | `internal/journal`, `internal/node`, `cmd/replay` | ✅ week 4 |
-| HTTP API, group commit | `internal/api` | ⏳ week 5 (health checks only today) |
+| HTTP API, bearer auth, ownership, limits, group commit | `internal/api`, `internal/engine`, `internal/journal` | ✅ week 5 |
 
 The server recovers its state from `CEX_DATA_DIR` on start, reports ready
 once recovery succeeds, and shuts down gracefully (stop HTTP, drain the
@@ -40,13 +42,27 @@ make run            # or: go run ./cmd/cexd   (journal in ./data/journal.wal)
 curl localhost:8080/healthz   # → ok
 curl -i localhost:8080/readyz # → 200 ready (once the journal is recovered)
 make check          # fmt-check + vet + race-enabled tests (what CI runs)
+go run ./tests/week5 # real HTTP process gate, crash restart and retry safety
 
 go run ./cmd/replay -data-dir ./data            # inspect a journal, read-only
 go run ./cmd/replay -data-dir ./data -to-seq 6  # the state right after seq 6
 ```
 
 Configuration comes from environment variables. See
-[.env.example](.env.example).
+[.env.example](.env.example). Protected API routes deny access until
+`CEX_API_TOKENS` contains credentials. Health checks need no token.
+See [ADR-0007](docs/adr/0007-authenticated-http-api.md) for the full API contract,
+status codes and runnable funding/order examples. `GET /v1/session` verifies
+the bearer token; there is no password or token-issuance service.
+
+`GET /v1/orders/{id}` reports resting orders owned by the caller. Filled or
+canceled orders return 404; use `GET /v1/requests/{key}` for the original
+request outcome. A timed-out admitted request may still execute: retry the
+same `Idempotency-Key`. Never replace its key just because the response was lost.
+
+Group commit defaults to 64 queued commands. Set `CEX_BATCH_SIZE=1` for the
+one-fsync-per-command baseline. See [ADR-0008](docs/adr/0008-opportunistic-group-commit.md)
+and [benchmark evidence](evidence/bench/2026-10-23-group-commit.txt).
 
 ## Documentation
 

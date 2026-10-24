@@ -17,6 +17,8 @@ type Config struct {
 	// goroutine. When the queue is full, Submit fails fast with
 	// ErrOverloaded instead of letting memory and latency grow without bound.
 	QueueSize int
+	// BatchSize bounds commands sharing one durable sync; collection never waits.
+	BatchSize int
 	// SnapshotDepth is how many price levels per side each published
 	// Snapshot holds.
 	SnapshotDepth int
@@ -47,7 +49,7 @@ type Hooks struct {
 }
 
 // DefaultConfig returns sizes suitable for local development.
-func DefaultConfig() Config { return Config{QueueSize: 1024, SnapshotDepth: 20} }
+func DefaultConfig() Config { return Config{QueueSize: 1024, SnapshotDepth: 20, BatchSize: 64} }
 
 // Snapshot is public market data published after every command. Readers get
 // it lock-free via Engine.Snapshot.
@@ -109,6 +111,9 @@ func New(st *state.State, cfg Config) *Engine {
 	if cfg.SnapshotDepth <= 0 {
 		cfg.SnapshotDepth = def.SnapshotDepth
 	}
+	if cfg.BatchSize <= 0 {
+		cfg.BatchSize = def.BatchSize
+	}
 	e := &Engine{
 		st:     st,
 		seq:    st.LastSeq(), // continue after whatever st already applied
@@ -129,57 +134,107 @@ func (e *Engine) Run() {
 		panic("engine: Run called twice; two goroutines would own the same state")
 	}
 	defer close(e.done)
-	for req := range e.intake { // ends when Close closes intake AND it is drained
-		if e.haltedLocal {
-			continue // halted: drop it; its caller learns via ErrHalted
+	batch := make([]request, 0, e.cfg.BatchSize)
+	var pending *request
+	for {
+		var req request
+		if pending != nil {
+			req = *pending
+			pending = nil
+		} else {
+			var ok bool
+			req, ok = <-e.intake
+			if !ok {
+				return
+			}
 		}
-		e.handle(req)
+		if e.haltedLocal {
+			continue
+		}
+		if req.query != nil {
+			e.handleBatch([]request{req})
+			continue
+		}
+		batch = append(batch[:0], req)
+	collect:
+		for len(batch) < e.cfg.BatchSize {
+			select {
+			case next, ok := <-e.intake:
+				if !ok {
+					break collect
+				}
+				if next.query != nil {
+					pending = &next
+					break collect
+				}
+				batch = append(batch, next)
+			default:
+				break collect
+			}
+		}
+		e.handleBatch(batch)
 	}
 }
 
-// handle runs one request. The deferred recover turns a panic anywhere in
-// Apply (a "cannot happen" guard firing) into a halt: the state may be
-// half-changed, so the engine stops instead of continuing on wrong money.
-// The process stays up, so the error can be read and reported.
-func (e *Engine) handle(req request) {
+// handleBatch makes the whole collected batch durable before applying any
+// command. Legacy Append-only storage is handled one command at a time.
+func (e *Engine) handleBatch(batch []request) {
 	defer func() {
 		if r := recover(); r != nil {
 			e.halt(fmt.Errorf("engine: panic at seq %d: %v", e.seq, r))
 		}
 	}()
-
-	if req.query != nil {
-		req.query(e.st)
+	if batch[0].query != nil {
+		batch[0].query(e.st)
 		return
 	}
-
-	e.seq++
-	req.cmd.Seq = e.seq // the fairness point: order of dequeue = order of Seq
-
-	// Durability BEFORE effect: the command is written and fsynced before
-	// it changes anything, so a reply always means "durable AND applied".
-	// If the append fails, the command may be partly or fully on disk, and
-	// the engine cannot know. It halts; a restart re-reads the journal and
-	// finds out.
 	if e.cfg.Journal != nil {
-		if err := e.cfg.Journal.Append(req.cmd); err != nil {
-			e.halt(fmt.Errorf("engine: journal append seq %d: %w", e.seq, err))
+		if writer, ok := e.cfg.Journal.(interface{ AppendBatch([]command.Command) error }); ok {
+			cmds := make([]command.Command, len(batch))
+			for i := range batch {
+				e.seq++
+				batch[i].cmd.Seq = e.seq
+				cmds[i] = batch[i].cmd
+			}
+			if err := writer.AppendBatch(cmds); err != nil {
+				e.halt(fmt.Errorf("engine: journal batch ending seq %d: %w", e.seq, err))
+				return
+			}
+			for _, req := range batch {
+				if !e.apply(req) {
+					return
+				}
+			}
 			return
 		}
 	}
+	for _, req := range batch {
+		e.seq++
+		req.cmd.Seq = e.seq
+		if e.cfg.Journal != nil {
+			if err := e.cfg.Journal.Append(req.cmd); err != nil {
+				e.halt(fmt.Errorf("engine: journal append seq %d: %w", e.seq, err))
+				return
+			}
+		}
+		if !e.apply(req) {
+			return
+		}
+	}
+}
 
+func (e *Engine) apply(req request) bool {
 	fx, err := e.st.Apply(req.cmd)
 	if err != nil {
-		e.halt(fmt.Errorf("engine: apply seq %d: %w", e.seq, err))
-		return
+		e.halt(fmt.Errorf("engine: apply seq %d: %w", req.cmd.Seq, err))
+		return false
 	}
-	// Publish BEFORE replying: by the time a caller holds its result, the
-	// snapshot already includes it (read-your-writes for market data).
 	e.publish()
 	if h := e.cfg.Hooks.AfterApply; h != nil {
-		h(e.seq)
+		h(req.cmd.Seq)
 	}
-	req.reply <- fx.Result // never blocks: capacity 1, exactly one send
+	req.reply <- fx.Result
+	return true
 }
 
 // halt stops trading for good (until a restart). Only the Run goroutine

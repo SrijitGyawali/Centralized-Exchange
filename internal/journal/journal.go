@@ -42,7 +42,11 @@ type Options struct {
 // Journal appends commands durably to one file. It is used by the engine's
 // single owner goroutine only, so it has no lock.
 type Journal struct {
-	f       *os.File
+	f interface {
+		Write([]byte) (int, error)
+		Sync() error
+		Close() error
+	}
 	nextSeq domain.Seq
 	err     error // sticky: set by the first write or sync failure
 	hooks   Hooks
@@ -103,42 +107,64 @@ func Open(path string, opts Options, apply func(command.Command) error) (*Journa
 // is refused before anything is written, and the journal stays usable. Any
 // WRITE or SYNC error, however, is sticky (see ErrFailed): the bytes may be
 // partly on disk, and only a restart can find out.
-func (j *Journal) Append(c command.Command) error {
+func (j *Journal) Append(c command.Command) error { return j.AppendBatch([]command.Command{c}) }
+
+// AppendBatch validates and encodes every frame before writing. Normal operation
+// uses one write and one sync. A crash can recover a complete prefix of a batch;
+// batching does not change the frame format or make commands transactional.
+func (j *Journal) AppendBatch(cmds []command.Command) error {
 	if j.err != nil {
 		return fmt.Errorf("%w: %w", ErrFailed, j.err)
 	}
-	if c.Seq != j.nextSeq {
-		return fmt.Errorf("journal: append seq %d, expected %d", c.Seq, j.nextSeq)
+	if len(cmds) == 0 {
+		return nil
 	}
-	frame, err := appendFrame(j.buf[:0], c)
-	if err != nil {
-		return err
-	}
-	j.buf = frame
-
-	call(j.hooks.BeforeWrite, c.Seq)
-	if j.hooks.MidWrite != nil {
-		half := len(frame) / 2
-		if err := j.write(frame[:half]); err != nil {
+	buf := j.buf[:0]
+	var ends []int
+	hooked := j.hooks.BeforeWrite != nil || j.hooks.MidWrite != nil || j.hooks.AfterWrite != nil
+	for i, c := range cmds {
+		if c.Seq != j.nextSeq+domain.Seq(i) {
+			return fmt.Errorf("journal: append seq %d, expected %d", c.Seq, j.nextSeq+domain.Seq(i))
+		}
+		var err error
+		buf, err = appendFrame(buf, c)
+		if err != nil {
 			return err
 		}
-		j.hooks.MidWrite(c.Seq)
-		frame = frame[half:]
+		if hooked {
+			ends = append(ends, len(buf))
+		}
 	}
-	if err := j.write(frame); err != nil {
+	j.buf = buf
+	if hooked {
+		start := 0
+		for i, c := range cmds {
+			frame := buf[start:ends[i]]
+			call(j.hooks.BeforeWrite, c.Seq)
+			if j.hooks.MidWrite != nil {
+				half := len(frame) / 2
+				if err := j.write(frame[:half]); err != nil {
+					return err
+				}
+				j.hooks.MidWrite(c.Seq)
+				frame = frame[half:]
+			}
+			if err := j.write(frame); err != nil {
+				return err
+			}
+			call(j.hooks.AfterWrite, c.Seq)
+			start = ends[i]
+		}
+	} else if err := j.write(buf); err != nil {
 		return err
 	}
-	call(j.hooks.AfterWrite, c.Seq)
-
-	// Write only hands bytes to the operating system's cache. Sync (fsync on
-	// Linux, FlushFileBuffers on Windows) waits until the device reports them
-	// stored. It is slow, milliseconds rather than microseconds, and it is
-	// the whole point.
 	if err := j.f.Sync(); err != nil {
 		return j.fail(err)
 	}
-	call(j.hooks.AfterSync, c.Seq)
-	j.nextSeq++
+	for _, c := range cmds {
+		call(j.hooks.AfterSync, c.Seq)
+	}
+	j.nextSeq += domain.Seq(len(cmds))
 	return nil
 }
 
@@ -146,8 +172,10 @@ func (j *Journal) Append(c command.Command) error {
 // writes fewer bytes than asked (a "short write"), so no retry loop is
 // needed here, but a short write still counts as a failure.
 func (j *Journal) write(b []byte) error {
-	if _, err := j.f.Write(b); err != nil {
+	if n, err := j.f.Write(b); err != nil {
 		return j.fail(err)
+	} else if n != len(b) {
+		return j.fail(io.ErrShortWrite)
 	}
 	return nil
 }

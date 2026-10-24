@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/book"
+	"github.com/SrijitGyawali/Centralized-Exchange/internal/command"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/domain"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/state"
 )
@@ -31,6 +32,7 @@ func (e *Engine) Snapshot() *Snapshot { return e.snap.Load() }
 // compiler enforces "queries are read-only". Every method returns copies,
 // so nothing a query returns can reach back into live state.
 type StateReader interface {
+	Lookup(user domain.UserID, key string) (command.Result, bool)
 	Balance(user domain.UserID, asset domain.Asset) (available, reserved int64)
 	Issued(asset domain.Asset) int64
 	Order(id domain.OrderID) (book.Order, bool)

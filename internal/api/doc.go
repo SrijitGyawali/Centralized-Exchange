@@ -3,10 +3,10 @@
 //
 // # Responsibilities
 //
-//   - Day 1: liveness (/healthz) and readiness (/readyz) endpoints.
-//   - Week 5: order placement, cancel, order status, request-result lookup,
+//   - Public liveness (/healthz) and readiness (/readyz) endpoints.
+//   - Order placement, cancel, order status, request-result lookup,
 //     balances and book; seeded-token authentication; ownership checks;
-//     rate limits; body-size limits; rejection of unknown JSON fields.
+//     per-user rate limits; body-size limits; strict flat JSON string fields.
 //
 // # Rules
 //
@@ -18,7 +18,7 @@
 //     429 rate limited, 503 overloaded before admission. A business
 //     rejection (e.g. insufficient funds) is a typed result, not an HTTP
 //     error.
-//   - A timeout means "outcome unknown". The client retries with the same
+//   - An admitted mutation timeout means "outcome unknown". The client retries with the same
 //     key or queries the request result.
 //   - Handlers never read engine state directly. They submit commands or
 //     read immutable snapshots.

@@ -2,6 +2,7 @@ package config
 
 import (
 	"log/slog"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -36,12 +37,14 @@ func TestLoad(t *testing.T) {
 				EnvLogLevel:        "DEBUG",
 				EnvShutdownTimeout: "30s",
 			},
-			want: Config{
-				HTTPAddr:        "127.0.0.1:9000",
-				DataDir:         "/var/lib/cex",
-				LogLevel:        slog.LevelDebug,
-				ShutdownTimeout: 30 * time.Second,
-			},
+			want: func() Config {
+				c := Default()
+				c.HTTPAddr = "127.0.0.1:9000"
+				c.DataDir = "/var/lib/cex"
+				c.LogLevel = slog.LevelDebug
+				c.ShutdownTimeout = 30 * time.Second
+				return c
+			}(),
 		},
 		{
 			name:    "bad log level",
@@ -72,8 +75,48 @@ func TestLoad(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Load() unexpected error: %v", err)
 			}
-			if got != tc.want {
+			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("Load() = %+v, want %+v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestWeek5Config(t *testing.T) {
+	c, err := Load(env(map[string]string{
+		"CEX_API_TOKENS": `[{"token":"test-admin-token-0001","user_id":"1","admin":true},{"token":"test-user-token-00002","user_id":"2"}]`,
+		"CEX_BATCH_SIZE": "32", "CEX_RATE_PER_SECOND": "12.5", "CEX_RATE_BURST": "25",
+		"CEX_REQUEST_TIMEOUT": "2s", "CEX_READ_HEADER_TIMEOUT": "3s", "CEX_READ_TIMEOUT": "4s", "CEX_WRITE_TIMEOUT": "5s", "CEX_IDLE_TIMEOUT": "30s",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(c.Tokens) != 2 || c.Tokens["test-admin-token-0001"].User != 1 || !c.Tokens["test-admin-token-0001"].Admin || c.BatchSize != 32 || c.RatePerSecond != 12.5 || c.RateBurst != 25 || c.RequestTimeout != 2*time.Second || c.ReadHeaderTimeout != 3*time.Second || c.ReadTimeout != 4*time.Second || c.WriteTimeout != 5*time.Second || c.IdleTimeout != 30*time.Second {
+		t.Fatal("overrides not applied")
+	}
+	for _, tc := range []struct{ key, value string }{
+		{"CEX_BATCH_SIZE", "0"}, {"CEX_BATCH_SIZE", "1025"}, {"CEX_BATCH_SIZE", "x"},
+		{"CEX_RATE_PER_SECOND", "NaN"}, {"CEX_RATE_PER_SECOND", "+Inf"}, {"CEX_RATE_PER_SECOND", "0"},
+		{"CEX_RATE_BURST", "-1"}, {"CEX_RATE_BURST", "1000001"},
+		{"CEX_REQUEST_TIMEOUT", "0s"}, {"CEX_READ_HEADER_TIMEOUT", "bad"}, {"CEX_WRITE_TIMEOUT", "1s"},
+		{"CEX_API_TOKENS", `null`}, {"CEX_API_TOKENS", `{}`},
+		{"CEX_API_TOKENS", `[{"token":"test-user-token-00001","user_id":"0"}]`},
+		{"CEX_API_TOKENS", `[{"token":"test-user-token-00001","user_id":1}]`},
+		{"CEX_API_TOKENS", `[{"token":"short","user_id":"1"}]`},
+		{"CEX_API_TOKENS", `[{"token":"test-user-token-00001","user_id":"1","extra":true}]`},
+		{"CEX_API_TOKENS", `[{"token":"test-user-token-00001","user_id":"1","admin":null}]`},
+		{"CEX_API_TOKENS", `[{"token":"test-user-token-00001","user_id":"1","user_id":"2"}]`},
+		{"CEX_API_TOKENS", `[{"token":"test-user-token-00001","user_id":"1"},{"token":"test-user-token-00001","user_id":"2"}]`},
+		{"CEX_API_TOKENS", `[{"token":"test-user-token-00001","user_id":"1","admin":true},{"token":"test-user-token-00002","user_id":"1"}]`},
+		{"CEX_API_TOKENS", `[{"token":"test-user-token-00001","user_id":"1"}] []`},
+	} {
+		t.Run(tc.key+"/"+tc.value, func(t *testing.T) {
+			_, err := Load(env(map[string]string{tc.key: tc.value}))
+			if err == nil || !strings.Contains(err.Error(), tc.key) {
+				t.Fatalf("wanted error naming %s, got %v", tc.key, err)
+			}
+			if strings.Contains(err.Error(), "test-user-token") {
+				t.Fatal("error exposed token")
 			}
 		})
 	}
