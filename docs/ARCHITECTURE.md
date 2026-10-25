@@ -6,8 +6,7 @@ directory or package owns each responsibility. It explains the *why* behind
 the repository layout. Detailed decisions live in [ADRs](adr/), and the full
 roadmap is in the [master plan](plan/CEX_Go_Guided_Master_Plan.md).
 
-> Status: weeks 1-5 implemented; week 6 in progress (SQL read model done,
-> WebSocket feed and UI next). Each section notes the week it was built.
+> Status: weeks 1-6 implemented (SQL read model, WebSocket feed, web UI). Each section notes the week it was built.
 
 ---
 
@@ -80,7 +79,8 @@ Key ideas:
 | Node | `internal/node` | Startup recovery (open journal, replay into a fresh state, check invariants, digest) and engine lifecycle. Used by `cexd`, the crash harness and tests | 4 |
 | Engine | `internal/engine` | Owner goroutine: intake queue, sequencing, group commit, calls `Apply`, delivers replies, publishes read snapshots, halts on storage errors | 3-5 |
 | HTTP API | `internal/api` | Routing, JSON validation, auth, ownership checks, rate limits, status-code mapping, health/readiness | 1 (health), 5 |
-| Market data | `internal/marketdata` | Sequenced depth snapshots, WebSocket fan-out, slow-consumer disconnect | 6 |
+| Market data | `internal/marketdata` | Hub polls the lock-free engine snapshot (bounded rate), encodes full snapshots once, one bounded buffer per WebSocket viewer, slow viewers disconnected with a reason. See ADR-0010 | 6 |
+| Web UI | `internal/webui` | Embedded HTML/CSS/JS: live book, trade tape, seq and projection lag, balances, order form; strict CSP, textContent only | 6 |
 | Projector | `internal/projector` | Follows `journal.wal` read-only, replays it through a private `state.State`, writes commands/orders/trades/ledger/balances plus the checkpoint in ONE transaction (checkpoint row locked first), reconciles at the same Seq. See ADR-0009 | 6 |
 | Config | `internal/config` | Reads environment variables into a typed, validated `Config` | 1 |
 | Server binary | `cmd/cexd` | Composition root: builds every component, wires them, runs, shuts down gracefully | 1 |
@@ -156,6 +156,7 @@ Planned PostgreSQL tables (week 6): `orders`, `trades`, `ledger_journals`,
 │   ├── node/                 #   Wiring: startup recovery + engine lifecycle
 │   ├── api/                  #   I/O:  HTTP handlers
 │   ├── marketdata/           #   I/O:  WebSocket feeds
+│   ├── webui/                #   The embedded web client (static files)
 │   ├── projector/            #   I/O:  PostgreSQL read model
 │   └── config/               #   Startup configuration
 ├── tests/                    # Cross-package tests: crash harness, end-to-end, recovery
@@ -226,7 +227,8 @@ Planned PostgreSQL tables (week 6): `orders`, `trades`, `ledger_journals`,
 | `GET /v1/book?symbol=BTC-USDT` | Depth snapshot | Tagged `seq` |
 | `POST /v1/admin/fund` | Create simulated money | Admin only; `user_id`, `asset`, `amount` strings |
 | `GET /v1/status` | Engine and read-model progress | `applied_seq`, and `projection.projected_seq` / `lag` / `healthy` (week 6) |
-| `GET /v1/stream` (WebSocket) | Depth snapshots, later incremental updates | Week 6 |
+| `GET /stream/book` (WebSocket) | Public full snapshots: depth + last 50 trades, tagged with seq | No token; slow viewers get close 1013. Week 6 |
+| `GET /` | The web client | Static, embedded |
 
 All `/v1` routes require bearer authentication. Auth precedes per-user rate
 limiting and strict, bounded JSON decoding. Status codes: `200` accepted/read,
