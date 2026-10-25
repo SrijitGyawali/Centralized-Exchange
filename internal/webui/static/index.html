@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CEX simulator</title>
+  <link rel="stylesheet" href="/ui/app.css">
+  <script src="/ui/app.js" defer></script>
+</head>
+<body>
+  <header>
+    <h1>BTC-USDT <span class="tag">paper trading</span></h1>
+    <div class="meta">
+      <span>seq <b id="seq">–</b></span>
+      <span id="conn" class="conn">connecting…</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Order book</h2>
+      <table class="book">
+        <thead><tr><th>price</th><th>BTC</th><th>orders</th></tr></thead>
+        <tbody id="asks"></tbody>
+        <tbody><tr class="spread"><td colspan="3" id="spread">–</td></tr></tbody>
+        <tbody id="bids"></tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>Trades</h2>
+      <table class="tape">
+        <thead><tr><th>seq</th><th>price</th><th>BTC</th><th>side</th></tr></thead>
+        <tbody id="trades"></tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>Account</h2>
+      <form id="login" autocomplete="off">
+        <label>API token <input id="token" type="password" placeholder="Bearer token"></label>
+        <button type="submit">Use token</button>
+      </form>
+      <div id="account" hidden>
+        <dl class="status">
+          <dt>applied seq</dt><dd id="applied">–</dd>
+          <dt>projected seq</dt><dd id="projected">–</dd>
+          <dt>projection lag</dt><dd id="lag">–</dd>
+        </dl>
+        <table class="balances">
+          <thead><tr><th>asset</th><th>available</th><th>reserved</th></tr></thead>
+          <tbody id="balances"></tbody>
+        </table>
+        <form id="order" autocomplete="off">
+          <div class="row">
+            <select id="side"><option value="buy">buy</option><option value="sell">sell</option></select>
+            <select id="tif"><option value="GTC">GTC</option><option value="IOC">IOC</option></select>
+          </div>
+          <label>price (USDT) <input id="price" inputmode="numeric" placeholder="60000"></label>
+          <label>quantity (BTC) <input id="qty" inputmode="decimal" placeholder="0.1"></label>
+          <button type="submit">Place order</button>
+        </form>
+        <pre id="result" class="result"></pre>
+        <button id="retry" type="button" hidden>Retry with the same Idempotency-Key</button>
+        <button id="logout" type="button" class="link">forget token</button>
+      </div>
+    </section>
+  </main>
+
+  <footer>Simulated funds only. Prices and quantities are exact decimal strings; nothing is rounded.</footer>
+</body>
+</html>
