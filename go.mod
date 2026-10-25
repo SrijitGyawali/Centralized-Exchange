@@ -9,6 +9,7 @@ module github.com/SrijitGyawali/Centralized-Exchange
 go 1.26.5
 
 require (
+	github.com/coder/websocket v1.8.15
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/jackc/tern/v2 v2.4.3
 	github.com/testcontainers/testcontainers-go v0.44.0
