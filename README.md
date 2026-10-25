@@ -10,7 +10,11 @@ built as a serious systems project for learning production Go.
 
 ## Status
 
-**Week 6, part 1: SQL read model.** With `CEX_DATABASE_URL` set, a projector
+**Week 6 complete.** Open http://localhost:8080/ for a live order book, trade
+tape and order form; the book streams over a WebSocket that disconnects slow
+viewers instead of ever slowing matching (ADR-0010).
+
+**SQL read model.** With `CEX_DATABASE_URL` set, a projector
 follows the journal into PostgreSQL (orders, trades, ledger, balances) in
 checkpointed transactions; `GET /v1/status` shows how far behind it is. A
 database outage never slows trading. See ADR-0009.
@@ -31,7 +35,7 @@ Restart replays the same WAL format, and retries keep their original outcome.
 | Durable journal (WAL), startup recovery, replay inspector | `internal/journal`, `internal/node`, `cmd/replay` | ✅ week 4 |
 | HTTP API, bearer auth, ownership, limits, group commit | `internal/api`, `internal/engine`, `internal/journal` | ✅ week 5 |
 | SQL read model: journal-following projector, transactional checkpoint, `/v1/status` lag | `internal/projector` | ✅ week 6 (part 1) |
-| Live WebSocket book feed, minimal web UI | `internal/marketdata` | ⏳ week 6 (part 2) |
+| Live WebSocket book feed (slow viewers dropped), minimal web UI | `internal/marketdata`, `internal/webui` | ✅ week 6 (part 2) |
 
 The server recovers its state from `CEX_DATA_DIR` on start, reports ready
 once recovery succeeds, and shuts down gracefully (stop HTTP, drain the
@@ -46,6 +50,7 @@ command).
 
 ```bash
 make run            # or: go run ./cmd/cexd   (journal in ./data/journal.wal)
+# then open http://localhost:8080/   (live book + trade tape; paste a token for the account panel)
 curl localhost:8080/healthz   # → ok
 curl -i localhost:8080/readyz # → 200 ready (once the journal is recovered)
 make check          # fmt-check + vet + race-enabled tests (what CI runs)
