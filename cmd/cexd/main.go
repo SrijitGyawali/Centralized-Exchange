@@ -32,8 +32,10 @@ import (
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/config"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/engine"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/journal"
+	"github.com/SrijitGyawali/Centralized-Exchange/internal/marketdata"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/node"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/projector"
+	"github.com/SrijitGyawali/Centralized-Exchange/internal/webui"
 )
 
 // version is overwritten at build time:
@@ -135,12 +137,31 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 	for token, identity := range cfg.Tokens {
 		tokens[token] = api.Principal{User: identity.User, Admin: identity.Admin}
 	}
+	// Public market data (week 6): a hub reads the engine's lock-free
+	// snapshot at a bounded rate and fans it out over WebSocket. It never
+	// touches the engine goroutine, so no viewer can slow matching down.
+	hub := marketdata.New(nd.Engine.Snapshot, marketdata.Config{})
+	hubCtx, stopHub := context.WithCancel(context.Background())
+	hubDone := make(chan struct{})
+	go func() { defer close(hubDone); hub.Run(hubCtx) }()
+	defer func() { stopHub(); <-hubDone }()
+
+	// One server, three kinds of route:
+	//   /stream/book  public WebSocket feed (no token, no private data)
+	//   /, /ui/...    the web client (static files)
+	//   everything else: health checks and the authenticated /v1 API
+	routes := http.NewServeMux()
+	routes.Handle("GET /stream/book", hub.Handler())
+	routes.Handle("GET /{$}", webui.Handler()) // {$}: exactly "/", not every path
+	routes.Handle("GET /ui/", webui.Handler())
+	routes.Handle("/", api.NewServer(nd.Engine, nd.Ready, api.Config{
+		Tokens: tokens, RatePerSecond: cfg.RatePerSecond, Burst: cfg.RateBurst,
+		RequestTimeout: cfg.RequestTimeout,
+		Projection:     projection,
+	}))
+
 	srv := &http.Server{
-		Handler: api.NewServer(nd.Engine, nd.Ready, api.Config{
-			Tokens: tokens, RatePerSecond: cfg.RatePerSecond, Burst: cfg.RateBurst,
-			RequestTimeout: cfg.RequestTimeout,
-			Projection:     projection,
-		}),
+		Handler: routes,
 		// Timeouts protect against slow or malicious clients holding
 		// connections open forever. The zero value means "no timeout",
 		// which is a classic production bug.
@@ -153,6 +174,11 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 
 	// Listen synchronously so a bad address or busy port fails startup
 	// immediately with a clear error, before we report "listening".
+	// Shutdown does NOT wait for or close hijacked connections (WebSockets), so
+	// stop the hub as shutdown begins: every stream gets a close frame saying
+	// "server shutting down" instead of hanging until the process exits.
+	srv.RegisterOnShutdown(stopHub)
+
 	ln, err := net.Listen("tcp", cfg.HTTPAddr)
 	if err != nil {
 		return fmt.Errorf("listen on %s: %w", cfg.HTTPAddr, err)
