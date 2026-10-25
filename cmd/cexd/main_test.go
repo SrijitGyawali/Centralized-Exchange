@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/coder/websocket"
 )
 
 // syncBuffer is a bytes.Buffer safe for concurrent use: run writes logs from
@@ -142,5 +144,72 @@ func TestRunRejectsBadConfig(t *testing.T) {
 	}
 	if err := run(context.Background(), getenv, &syncBuffer{}); err == nil {
 		t.Fatal("run() = nil, want config error")
+	}
+}
+
+// TestRunServesTheWebUIAndALongLivedStream checks the composed routes on the
+// real server: the page at /, and a WebSocket stream that outlives the
+// server's HTTP WriteTimeout (a deadline left on a hijacked connection would
+// silently kill every live stream after a few seconds) and is closed with a
+// reason on shutdown.
+func TestRunServesTheWebUIAndALongLivedStream(t *testing.T) {
+	addr, _, stop := startServerWithEnv(t, map[string]string{
+		"CEX_API_TOKENS":      `[{"token":"stream-admin-token-01","user_id":"1","admin":true}]`,
+		"CEX_REQUEST_TIMEOUT": "1s", "CEX_WRITE_TIMEOUT": "2s",
+	})
+	stopped := false
+	defer func() {
+		if !stopped {
+			stop()
+		}
+	}()
+
+	resp, err := http.Get("http://" + addr + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 200 || !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/html") {
+		t.Fatalf("GET / = %d %q, want the web page", resp.StatusCode, resp.Header.Get("Content-Type"))
+	}
+
+	ctx := context.Background()
+	c, _, err := websocket.Dial(ctx, "ws://"+addr+"/stream/book", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.CloseNow()
+	readMsg := func() string {
+		t.Helper()
+		rctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		_, b, err := c.Read(rctx)
+		if err != nil {
+			t.Fatalf("reading the stream: %v", err)
+		}
+		return string(b)
+	}
+	readMsg() // the initial snapshot
+
+	time.Sleep(3 * time.Second) // longer than CEX_WRITE_TIMEOUT
+	req, _ := http.NewRequest("POST", "http://"+addr+"/v1/admin/fund", strings.NewReader(`{"user_id":"1","asset":"USDT","amount":"1"}`))
+	req.Header.Set("Authorization", "Bearer stream-admin-token-01")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Idempotency-Key", "fund-after-wait")
+	if resp, err := http.DefaultClient.Do(req); err != nil || resp.StatusCode != 200 {
+		t.Fatalf("funding: %v %v", resp, err)
+	}
+	if msg := readMsg(); !strings.Contains(msg, `"seq":"1"`) {
+		t.Fatalf("after the wait: %s; want the update at seq 1 (the stream died?)", msg)
+	}
+
+	if err := stop(); err != nil {
+		t.Fatal(err)
+	}
+	stopped = true
+	rctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if _, _, err := c.Read(rctx); websocket.CloseStatus(err) != websocket.StatusTryAgainLater {
+		t.Errorf("after shutdown: %v; want close 1013 (server shutting down)", err)
 	}
 }
