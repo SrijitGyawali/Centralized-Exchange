@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 
@@ -60,9 +61,23 @@ func DefaultConfig() Config { return Config{QueueSize: 1024, SnapshotDepth: 20, 
 // between any number of goroutines with no lock. Readers must not modify it
 // either.
 type Snapshot struct {
-	Seq  domain.Seq // the last command applied when this snapshot was taken
-	Book book.Depth // top SnapshotDepth levels per side, best first
+	Seq    domain.Seq    // the last command applied when this snapshot was taken
+	Book   book.Depth    // top SnapshotDepth levels per side, best first
+	Trades []PublicTrade // the most recent fills, newest LAST (at most RecentTrades)
 }
+
+// PublicTrade is what everyone may see about a fill: when, at what price,
+// how much, and which side was the aggressor. Never who traded, and never
+// order IDs: those are private (week 5 privacy rules).
+type PublicTrade struct {
+	Seq       domain.Seq // the command that produced the fill
+	Price     domain.Price
+	Qty       domain.Qty
+	TakerSide domain.Side // buy = a buyer lifted an ask
+}
+
+// RecentTrades is how many fills each Snapshot carries for the trade tape.
+const RecentTrades = 50
 
 // request is one item in the intake queue: either a command to sequence and
 // apply, or a read-only query to run against the state.
@@ -85,6 +100,7 @@ type Engine struct {
 	st          *state.State
 	seq         domain.Seq
 	haltedLocal bool
+	recent      []PublicTrade // last RecentTrades fills, newest last (owner goroutine only)
 	cfg         Config
 
 	// --- shared ---
@@ -229,6 +245,14 @@ func (e *Engine) apply(req request) bool {
 		e.halt(fmt.Errorf("engine: apply seq %d: %w", req.cmd.Seq, err))
 		return false
 	}
+	if !fx.Result.Duplicate { // a retry replays a stored result; its fills already happened
+		for _, f := range fx.Result.Fills {
+			e.recent = append(e.recent, PublicTrade{Seq: req.cmd.Seq, Price: f.Price, Qty: f.Qty, TakerSide: f.TakerSide})
+		}
+		if n := len(e.recent); n > RecentTrades {
+			e.recent = append(e.recent[:0], e.recent[n-RecentTrades:]...) // keep the newest, reuse the array
+		}
+	}
 	e.publish()
 	if h := e.cfg.Hooks.AfterApply; h != nil {
 		h(req.cmd.Seq)
@@ -251,7 +275,9 @@ func (e *Engine) halt(err error) {
 }
 
 func (e *Engine) publish() {
-	e.snap.Store(&Snapshot{Seq: e.st.LastSeq(), Book: e.st.Depth(e.cfg.SnapshotDepth)})
+	// slices.Clone: the snapshot must never share e.recent's array, which the
+	// owner goroutine keeps appending to. Shared arrays would be a data race.
+	e.snap.Store(&Snapshot{Seq: e.st.LastSeq(), Book: e.st.Depth(e.cfg.SnapshotDepth), Trades: slices.Clone(e.recent)})
 }
 
 // Close stops admitting new requests. Requests already admitted are still
