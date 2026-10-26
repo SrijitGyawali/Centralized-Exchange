@@ -10,6 +10,11 @@ built as a serious systems project for learning production Go.
 
 ## Status
 
+**Week 6, part 1: SQL read model.** With `CEX_DATABASE_URL` set, a projector
+follows the journal into PostgreSQL (orders, trades, ledger, balances) in
+checkpointed transactions; `GET /v1/status` shows how far behind it is. A
+database outage never slows trading. See ADR-0009.
+
 **Week 5 implemented.** HTTP clients can authenticate with provisioned bearer
 tokens, place/cancel orders, query private results and balances, read the book,
 and fund simulated accounts with an admin token. Queued commands share a journal
@@ -25,6 +30,8 @@ Restart replays the same WAL format, and retries keep their original outcome.
 | Engine: single owner goroutine, concurrent submissions, snapshots | `internal/engine` | ✅ week 3 |
 | Durable journal (WAL), startup recovery, replay inspector | `internal/journal`, `internal/node`, `cmd/replay` | ✅ week 4 |
 | HTTP API, bearer auth, ownership, limits, group commit | `internal/api`, `internal/engine`, `internal/journal` | ✅ week 5 |
+| SQL read model: journal-following projector, transactional checkpoint, `/v1/status` lag | `internal/projector` | ✅ week 6 (part 1) |
+| Live WebSocket book feed, minimal web UI | `internal/marketdata` | ⏳ week 6 (part 2) |
 
 The server recovers its state from `CEX_DATA_DIR` on start, reports ready
 once recovery succeeds, and shuts down gracefully (stop HTTP, drain the
@@ -46,6 +53,16 @@ go run ./tests/week5 # real HTTP process gate, crash restart and retry safety
 
 go run ./cmd/replay -data-dir ./data            # inspect a journal, read-only
 go run ./cmd/replay -data-dir ./data -to-seq 6  # the state right after seq 6
+```
+
+### With the SQL read model (week 6; needs Docker Desktop running)
+
+```bash
+make db-up                    # local PostgreSQL 17 on 127.0.0.1:5433
+CEX_DATABASE_URL=postgres://cex:cex-local-only@127.0.0.1:5433/cex make run
+curl -H "Authorization: Bearer <token>" localhost:8080/v1/status   # applied_seq, projected_seq, lag
+make test-integration         # projector + outage tests against a real PostgreSQL
+make db-down
 ```
 
 Configuration comes from environment variables. See
