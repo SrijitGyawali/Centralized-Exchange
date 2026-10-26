@@ -23,12 +23,17 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/api"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/config"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/engine"
+	"github.com/SrijitGyawali/Centralized-Exchange/internal/journal"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/node"
+	"github.com/SrijitGyawali/Centralized-Exchange/internal/projector"
 )
 
 // version is overwritten at build time:
@@ -93,6 +98,39 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 		"took", nd.Recovery.Took.String(),
 	)
 
+	// The SQL read model (week 6) is optional. When enabled, a projector
+	// goroutine follows the journal file and writes PostgreSQL. It never
+	// talks to the engine, and trading never waits for it: a database outage
+	// only makes history stale (ADR-0009). The URL holds a password, so it is
+	// never logged.
+	var projection api.ProjectionStatus
+	if cfg.DatabaseURL != "" {
+		pool, err := pgxpool.New(context.Background(), cfg.DatabaseURL) // connects lazily; never blocks startup
+		if err != nil {
+			return fmt.Errorf("database: invalid CEX_DATABASE_URL")
+		}
+		status := &projector.Status{}
+		projCtx, stopProjector := context.WithCancel(context.Background())
+		projDone := make(chan struct{})
+		go func() {
+			defer close(projDone)
+			projector.Run(projCtx, projector.Config{
+				JournalPath: filepath.Join(cfg.DataDir, journal.FileName),
+				Pool:        pool,
+			}, 0, status, logger)
+		}()
+		// Registered AFTER the node's deferred Close, so it runs BEFORE it:
+		// the projector stops first, then the engine drains.
+		defer func() {
+			stopProjector()
+			<-projDone
+			pool.Close()
+			logger.Info("projector stopped", "projected_seq", status.ProjectedSeq())
+		}()
+		projection = status
+		logger.Info("projector enabled")
+	}
+
 	tokens := make(map[string]api.Principal, len(cfg.Tokens))
 	for token, identity := range cfg.Tokens {
 		tokens[token] = api.Principal{User: identity.User, Admin: identity.Admin}
@@ -101,6 +139,7 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 		Handler: api.NewServer(nd.Engine, nd.Ready, api.Config{
 			Tokens: tokens, RatePerSecond: cfg.RatePerSecond, Burst: cfg.RateBurst,
 			RequestTimeout: cfg.RequestTimeout,
+			Projection:     projection,
 		}),
 		// Timeouts protect against slow or malicious clients holding
 		// connections open forever. The zero value means "no timeout",
