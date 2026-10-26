@@ -9,10 +9,10 @@ VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -X main.version=$(VERSION)
 
 .DEFAULT_GOAL := help
-.PHONY: help build run test race vet fmt fmt-check cover tidy check clean
+.PHONY: help build run test race vet fmt fmt-check cover tidy check clean test-integration db-up db-down
 
 help: ## Show this help
-	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-17s %s\n", $$1, $$2}'
 
 build: ## Compile binaries into bin/ with the version stamped in
 	go build -ldflags "$(LDFLAGS)" -o bin/cexd$(GOEXE) ./cmd/cexd
@@ -44,6 +44,15 @@ tidy: ## Sync go.mod/go.sum with the imports actually used
 	go mod tidy
 
 check: fmt-check vet race ## Everything CI checks
+
+test-integration: ## Tests against a real PostgreSQL in Docker (Docker must be running)
+	go test -tags=integration -count=1 ./internal/projector ./cmd/cexd
+
+db-up: ## Start a local PostgreSQL for the read model (deploy/docker-compose.yml)
+	docker compose -f deploy/docker-compose.yml up -d --wait
+
+db-down: ## Stop the local PostgreSQL (its data volume is kept)
+	docker compose -f deploy/docker-compose.yml down
 
 clean: ## Remove build and test output
 	rm -rf bin coverage.out
