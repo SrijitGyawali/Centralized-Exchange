@@ -6,8 +6,8 @@ directory or package owns each responsibility. It explains the *why* behind
 the repository layout. Detailed decisions live in [ADRs](adr/), and the full
 roadmap is in the [master plan](plan/CEX_Go_Guided_Master_Plan.md).
 
-> Status: Day 1 skeleton. Most packages contain only a `doc.go` that states
-> what they will own. Each section notes the week it gets implemented.
+> Status: weeks 1-5 implemented; week 6 in progress (SQL read model done,
+> WebSocket feed and UI next). Each section notes the week it was built.
 
 ---
 
@@ -81,7 +81,7 @@ Key ideas:
 | Engine | `internal/engine` | Owner goroutine: intake queue, sequencing, group commit, calls `Apply`, delivers replies, publishes read snapshots, halts on storage errors | 3-5 |
 | HTTP API | `internal/api` | Routing, JSON validation, auth, ownership checks, rate limits, status-code mapping, health/readiness | 1 (health), 5 |
 | Market data | `internal/marketdata` | Sequenced depth snapshots, WebSocket fan-out, slow-consumer disconnect | 6 |
-| Projector | `internal/projector` | Tails the WAL, writes orders/trades/ledger rows plus checkpoint in one SQL transaction | 6 |
+| Projector | `internal/projector` | Follows `journal.wal` read-only, replays it through a private `state.State`, writes commands/orders/trades/ledger/balances plus the checkpoint in ONE transaction (checkpoint row locked first), reconciles at the same Seq. See ADR-0009 | 6 |
 | Config | `internal/config` | Reads environment variables into a typed, validated `Config` | 1 |
 | Server binary | `cmd/cexd` | Composition root: builds every component, wires them, runs, shuts down gracefully | 1 |
 | Replay CLI | `cmd/replay` | Offline replay to a chosen sequence, state digest, "explain order" | 4, 8 |
@@ -126,7 +126,7 @@ week 7), `migrations/` (SQL schema, week 6), `web/` (frontend, week 6).
 | Commands (every sequenced command, including rejections and duplicates) | `data/journal.wal` (one append-only file; segments arrive with snapshots in Tier 2) | **Yes** | It *is* the durable record |
 | Books, balances, reservations, dedupe results, ID counters | Memory, inside `state.State` | Derived | Replaying the WAL (Tier 2: snapshot + WAL suffix) |
 | Snapshots (Tier 2) | `data/snapshots/` | Derived, a recovery shortcut | Checksummed and atomically published |
-| Orders, trades, ledger lines, balances for queries | PostgreSQL tables | **No**, a projection | Rebuild from WAL; `projection_checkpoint` records progress |
+| Commands, orders (full lifecycle), trades, ledger journals and lines, balances | PostgreSQL tables (optional: `CEX_DATABASE_URL`) | **No**, a disposable projection | Rebuilt from the journal; `projection_checkpoint` commits with the rows; lag shown by `GET /v1/status` |
 | Public market data | Memory, pushed over WebSocket | No | Client resubscribes and fetches a fresh snapshot |
 
 Money representation (see [ADR-0002](adr/0002-units-and-fixed-point.md)):
@@ -225,6 +225,7 @@ Planned PostgreSQL tables (week 6): `orders`, `trades`, `ledger_journals`,
 | `GET /v1/balances` | Available and reserved per asset | Tagged `seq` |
 | `GET /v1/book?symbol=BTC-USDT` | Depth snapshot | Tagged `seq` |
 | `POST /v1/admin/fund` | Create simulated money | Admin only; `user_id`, `asset`, `amount` strings |
+| `GET /v1/status` | Engine and read-model progress | `applied_seq`, and `projection.projected_seq` / `lag` / `healthy` (week 6) |
 | `GET /v1/stream` (WebSocket) | Depth snapshots, later incremental updates | Week 6 |
 
 All `/v1` routes require bearer authentication. Auth precedes per-user rate
