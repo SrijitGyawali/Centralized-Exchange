@@ -13,6 +13,7 @@ import (
 	"io"
 	"log/slog"
 	"math"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -48,6 +49,9 @@ type Config struct {
 	ReadTimeout       time.Duration
 	WriteTimeout      time.Duration
 	IdleTimeout       time.Duration
+	// DatabaseURL enables the PostgreSQL read model (week 6). Empty means
+	// no projection. It contains a password, so it is never logged.
+	DatabaseURL string
 }
 
 // Identity is provisioned by an operator, never supplied by an HTTP caller.
@@ -148,6 +152,15 @@ func Load(getenv func(string) string) (Config, error) {
 			errs = append(errs, errors.New("CEX_RATE_PER_SECOND: must be finite and in (0, 1000000]"))
 		} else {
 			cfg.RatePerSecond = n
+		}
+	}
+	if v := getenv("CEX_DATABASE_URL"); v != "" {
+		// Only the shape is checked here; the error never quotes the value,
+		// because it holds a password.
+		if u, err := url.Parse(v); err != nil || (u.Scheme != "postgres" && u.Scheme != "postgresql") || u.Host == "" {
+			errs = append(errs, errors.New("CEX_DATABASE_URL: must be postgres://user:password@host:port/dbname"))
+		} else {
+			cfg.DatabaseURL = v
 		}
 	}
 	if v := getenv("CEX_API_TOKENS"); v != "" {
