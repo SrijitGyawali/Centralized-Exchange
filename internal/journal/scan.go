@@ -51,8 +51,21 @@ type ScanResult struct {
 //
 // If fn returns an error, Scan stops and returns it wrapped.
 func Scan(r io.Reader, fn func(command.Command) error) (ScanResult, error) {
+	return ScanFrom(r, 1, fn)
+}
+
+// ScanFrom is Scan for a reader positioned at a frame boundary in the MIDDLE
+// of a journal, where the next frame must carry Seq next. A reader that
+// follows a growing journal (the SQL projector) uses it to resume where it
+// stopped: seek to the byte offset it reached, then ScanFrom the Seq after
+// the last one it saw.
+//
+// LastSeq starts at next-1 and ValidBytes/TornBytes count from the reader's
+// starting position. When following a live journal, a torn tail usually just
+// means "the writer is in the middle of appending": read again later.
+func ScanFrom(r io.Reader, next domain.Seq, fn func(command.Command) error) (ScanResult, error) {
 	br := bufio.NewReader(r)
-	var res ScanResult
+	res := ScanResult{LastSeq: next - 1}
 	var hdr [headerSize]byte
 	body := make([]byte, maxPayload+trailerSize) // the most a valid frame can need: allocated once
 
