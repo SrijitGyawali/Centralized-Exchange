@@ -38,3 +38,16 @@ jobs:
 
       - name: week 5 HTTP crash and retry gate
         run: go run ./tests/week5
+
+  # Tests that need a real PostgreSQL. GitHub's Linux runners have Docker, so
+  # testcontainers can start one per test package. Kept as a separate job so
+  # a Docker hiccup is visibly different from a unit-test failure.
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: PostgreSQL read-model tests (testcontainers)
+        run: go test -tags=integration -count=1 ./internal/projector ./cmd/cexd
