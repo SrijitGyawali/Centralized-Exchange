@@ -256,3 +256,32 @@ func FuzzScan(f *testing.F) {
 		}
 	})
 }
+
+// TestScanFromResumesMidJournal: reading the first frames, then resuming at
+// the byte offset reached with the next Seq, must see exactly the rest, as a
+// projector following a growing journal does.
+func TestScanFromResumesMidJournal(t *testing.T) {
+	cmds := sequenced(5)
+	data := encodeFrames(t, cmds)
+	first, res, err := scanBytes(encodeFrames(t, cmds[:2]))
+	if err != nil || len(first) != 2 {
+		t.Fatalf("first part: %v, %v", first, err)
+	}
+
+	var rest []command.Command
+	res2, err := ScanFrom(bytes.NewReader(data[res.ValidBytes:]), res.LastSeq+1, func(c command.Command) error {
+		rest = append(rest, c)
+		return nil
+	})
+	if err != nil || len(rest) != 3 || rest[0].Seq != 3 || res2.LastSeq != 5 {
+		t.Fatalf("resumed scan: %d commands, %+v, %v; want seqs 3..5", len(rest), res2, err)
+	}
+	if res2.ValidBytes != int64(len(data))-res.ValidBytes {
+		t.Errorf("ValidBytes = %d, want the bytes after the offset", res2.ValidBytes)
+	}
+
+	// Resuming with the wrong expected Seq is a gap, i.e. corruption.
+	if _, err := ScanFrom(bytes.NewReader(data[res.ValidBytes:]), 4, nil); !errors.Is(err, ErrCorrupt) {
+		t.Errorf("resume expecting seq 4 at seq 3: error = %v, want ErrCorrupt", err)
+	}
+}
