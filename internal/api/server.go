@@ -26,6 +26,8 @@ type Config struct {
 	RatePerSecond  float64
 	Burst          int
 	RequestTimeout time.Duration
+	// Projection reports the SQL read model's progress for GET /v1/status; nil = none.
+	Projection ProjectionStatus
 }
 type bucket struct {
 	tokens float64
@@ -72,6 +74,7 @@ func NewServer(e *engine.Engine, ready ReadinessFunc, cfg Config) http.Handler {
 	mux.HandleFunc("GET /v1/requests/{key}", s.lookup)
 	mux.HandleFunc("GET /v1/balances", s.balances)
 	mux.HandleFunc("GET /v1/book", s.book)
+	mux.HandleFunc("GET /v1/status", s.status)
 	if ready == nil {
 		ready = func() error { return nil }
 	}
