@@ -137,3 +137,22 @@ func TestLoadReportsAllErrors(t *testing.T) {
 		}
 	}
 }
+
+func TestDatabaseURL(t *testing.T) {
+	c, err := Load(env(map[string]string{"CEX_DATABASE_URL": "postgres://cex:secret-pw@localhost:5432/cex"}))
+	if err != nil || c.DatabaseURL != "postgres://cex:secret-pw@localhost:5432/cex" {
+		t.Fatalf("valid URL: %+v, %v", c.DatabaseURL, err)
+	}
+	if c, _ := Load(env(nil)); c.DatabaseURL != "" {
+		t.Error("the projection must be off by default")
+	}
+	for _, bad := range []string{"mysql://u:secret-pw@h/db", "postgres://", "not a url secret-pw", "postgres:///db?password=secret-pw"} {
+		_, err := Load(env(map[string]string{"CEX_DATABASE_URL": bad}))
+		if err == nil || !strings.Contains(err.Error(), "CEX_DATABASE_URL") {
+			t.Errorf("%q: error = %v, want one naming CEX_DATABASE_URL", bad, err)
+		}
+		if err != nil && strings.Contains(err.Error(), "secret-pw") {
+			t.Errorf("%q: the error leaked the password: %v", bad, err)
+		}
+	}
+}
