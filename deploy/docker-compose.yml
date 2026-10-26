@@ -1,0 +1,29 @@
+# Local PostgreSQL for the SQL read model (week 6). Week 7 adds cexd itself,
+# Prometheus and Grafana to this file.
+#
+#   make db-up      # start (waits until healthy)
+#   make db-down    # stop; the data volume is kept
+#
+# Then run the server with the read model enabled:
+#   CEX_DATABASE_URL=postgres://cex:cex-local-only@127.0.0.1:5433/cex make run
+#
+# The password here is for LOCAL development only; never reuse it anywhere.
+services:
+  postgres:
+    image: postgres:17-alpine # pinned major version, same as the tests
+    environment:
+      POSTGRES_DB: cex
+      POSTGRES_USER: cex
+      POSTGRES_PASSWORD: cex-local-only
+    ports:
+      - "127.0.0.1:5433:5432" # loopback only; 5433 avoids clashing with a native install
+    volumes:
+      - cex-readmodel:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cex -d cex"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  cex-readmodel:
