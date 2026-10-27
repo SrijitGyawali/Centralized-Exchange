@@ -1,13 +1,22 @@
-# Local PostgreSQL for the SQL read model (week 6). Week 7 adds cexd itself,
-# Prometheus and Grafana to this file.
+# The whole local stack with one command (week 7):
 #
-#   make db-up      # start (waits until healthy)
-#   make db-down    # stop; the data volume is kept
+#   make up        # build cexd, start everything, wait until healthy
+#   make down      # stop everything; data volumes are kept
 #
-# Then run the server with the read model enabled:
+#   http://localhost:8080   exchange: web UI, API, /stream/book
+#   http://localhost:6060   cexd admin: /metrics, /debug/pprof (loopback only)
+#   http://localhost:9090   Prometheus (targets, alerts, ad-hoc queries)
+#   http://localhost:3000   Grafana: four provisioned dashboards (anonymous viewer)
+#
+# Only PostgreSQL, for running cexd outside Docker (week 6 workflow):
+#   make db-up / make db-down
 #   CEX_DATABASE_URL=postgres://cex:cex-local-only@127.0.0.1:5433/cex make run
 #
-# The password here is for LOCAL development only; never reuse it anywhere.
+# Every port is published on 127.0.0.1 only: nothing here is reachable from
+# another machine. All passwords and tokens in this directory are LOCAL DEMO
+# values, published in the repository; never reuse them anywhere.
+name: cex
+
 services:
   postgres:
     image: postgres:17-alpine # pinned major version, same as the tests
@@ -16,7 +25,7 @@ services:
       POSTGRES_USER: cex
       POSTGRES_PASSWORD: cex-local-only
     ports:
-      - "127.0.0.1:5433:5432" # loopback only; 5433 avoids clashing with a native install
+      - "127.0.0.1:5433:5432" # 5433 avoids clashing with a native install
     volumes:
       - cex-readmodel:/var/lib/postgresql/data
     healthcheck:
@@ -25,5 +34,71 @@ services:
       timeout: 3s
       retries: 15
 
+  cexd:
+    build:
+      context: .. # the repository root: the Dockerfile copies the Go module
+      dockerfile: deploy/Dockerfile
+      args:
+        VERSION: ${CEX_VERSION:-compose}
+    image: cex/cexd:local
+    env_file: cexd.env # API tokens: local demo credentials (see the file)
+    environment:
+      # Inside the Compose network PostgreSQL is "postgres:5432", not the
+      # host's 127.0.0.1:5433.
+      CEX_DATABASE_URL: postgres://cex:cex-local-only@postgres:5432/cex
+      CEX_LOG_LEVEL: info
+      # Generous limits so `make load` measures the engine, not the limiter.
+      CEX_RATE_PER_SECOND: "100000"
+      CEX_RATE_BURST: "100000"
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:6060:6060" # admin port: the host's loopback only
+    volumes:
+      # The WAL is the exchange: a NAMED volume survives `docker compose down`
+      # and image rebuilds. (Docker Desktop's volume lives in a Linux VM; its
+      # fsync guarantees are not those of bare-metal Linux.)
+      - cex-data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy # not required (the projector retries), but cleaner logs
+    # docker stop sends SIGTERM, then SIGKILL after this grace period. It must
+    # exceed CEX_SHUTDOWN_TIMEOUT (10 s) so a drain is never cut short.
+    stop_grace_period: 20s
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      - cexd
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true" # local only: anyone on this machine may VIEW
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_SECURITY_ADMIN_PASSWORD: cex-local-only
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/engine.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - prometheus
+
 volumes:
   cex-readmodel:
+  cex-data:
+  prometheus-data:
+  grafana-data:
