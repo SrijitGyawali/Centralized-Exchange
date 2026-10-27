@@ -10,7 +10,17 @@ built as a serious systems project for learning production Go.
 
 ## Status
 
-**Week 6 complete.** Open http://localhost:8080/ for a live order book, trade
+**Week 7 complete: measured.** `make up` starts the exchange, PostgreSQL,
+Prometheus and Grafana (four dashboards). Every request is timed at three
+nested levels (HTTP, engine, and inside the engine: queue wait, durable
+fsync, apply) on a private admin port that also serves pprof. An open-model
+load generator reports what clients saw and where the server spent the time.
+[docs/PERFORMANCE.md](docs/PERFORMANCE.md) has the results: group commit
+serves 3200 orders/s at a 2.4 ms median where one fsync per order saturates
+near 750/s; the engine waits on fsync ~93 % of the time; the latency tail
+is the disk's rare 100 ms-1 s fsyncs, not the code.
+
+**Week 6.** Open http://localhost:8080/ for a live order book, trade
 tape and order form; the book streams over a WebSocket that disconnects slow
 viewers instead of ever slowing matching (ADR-0010).
 
@@ -36,6 +46,9 @@ Restart replays the same WAL format, and retries keep their original outcome.
 | HTTP API, bearer auth, ownership, limits, group commit | `internal/api`, `internal/engine`, `internal/journal` | ✅ week 5 |
 | SQL read model: journal-following projector, transactional checkpoint, `/v1/status` lag | `internal/projector` | ✅ week 6 (part 1) |
 | Live WebSocket book feed (slow viewers dropped), minimal web UI | `internal/marketdata`, `internal/webui` | ✅ week 6 (part 2) |
+| Metrics on a private admin port (pprof too), high-resolution clock | `internal/telemetry`, `internal/clock`, `cmd/cexd` | ✅ week 7 |
+| Open-model load generator, workloads, outage drill, performance report | `cmd/loadgen`, `loadtest/`, `docs/PERFORMANCE.md` | ✅ week 7 |
+| Docker image, Compose stack, Prometheus alerts, Grafana dashboards | `deploy/` | ✅ week 7 |
 
 The server recovers its state from `CEX_DATA_DIR` on start, reports ready
 once recovery succeeds, and shuts down gracefully (stop HTTP, drain the
@@ -45,8 +58,9 @@ in [track/](track/).
 
 ## Quick start
 
-Requirements: Go 1.26.5+, `make` (optional, every target is a plain `go`
-command).
+Requirements: Go 1.26.10+ (go.mod selects it automatically), `make`
+(optional, every target is a plain `go` command), Docker Desktop for the
+Compose stack and the integration tests.
 
 ```bash
 make run            # or: go run ./cmd/cexd   (journal in ./data/journal.wal)
@@ -59,6 +73,20 @@ go run ./tests/week5 # real HTTP process gate, crash restart and retry safety
 go run ./cmd/replay -data-dir ./data            # inspect a journal, read-only
 go run ./cmd/replay -data-dir ./data -to-seq 6  # the state right after seq 6
 ```
+
+### The whole stack in Docker (week 7)
+
+```bash
+make up          # exchange :8080, admin/metrics :6060, Prometheus :9090, Grafana :3000
+make load-smoke  # a few seconds of load; results in tmp/load-smoke/report.md
+make load-step   # 100 -> 3200 orders/s with a CPU profile (about 2.5 minutes)
+make down        # stop; volumes are kept
+```
+
+The Compose server already knows the load generator's accounts (local demo
+credentials, see [deploy/cexd.env](deploy/cexd.env)): paste
+`loadgen-local-admin-0001` into the web UI to fund and trade. Profiling a
+running server: `go tool pprof http://localhost:6060/debug/pprof/profile?seconds=20`.
 
 ### With the SQL read model (week 6; needs Docker Desktop running)
 
