@@ -13,8 +13,9 @@ import (
 // last committed Seq and whether the projector is currently healthy. Safe
 // for concurrent use; Run updates it.
 type Status struct {
-	seq     atomic.Uint64
-	healthy atomic.Bool
+	seq      atomic.Uint64
+	healthy  atomic.Bool
+	failures atomic.Uint64
 }
 
 // ProjectedSeq returns the last Seq committed to the read model.
@@ -22,6 +23,17 @@ func (s *Status) ProjectedSeq() domain.Seq { return domain.Seq(s.seq.Load()) }
 
 // Healthy reports whether the projector is running normally.
 func (s *Status) Healthy() bool { return s.healthy.Load() }
+
+// Failures counts every failed start or catch-up since the server started
+// (week 7 metrics). Each one is followed by a wait and a rebuild from the
+// checkpoint, so a rising count means "the database keeps failing", while
+// Healthy only says what is true right now.
+func (s *Status) Failures() uint64 { return s.failures.Load() }
+
+func (s *Status) fail() {
+	s.healthy.Store(false)
+	s.failures.Add(1)
+}
 
 // Run keeps the read model up to date until ctx ends, then returns.
 //
@@ -42,7 +54,7 @@ func Run(ctx context.Context, cfg Config, poll time.Duration, status *Status, lo
 	for ctx.Err() == nil {
 		p, err := New(ctx, cfg)
 		if err != nil {
-			status.healthy.Store(false)
+			status.fail()
 			log.Warn("projector: start failed; retrying", "err", err, "in", backoff.String())
 			sleep(ctx, backoff)
 			backoff = min(2*backoff, 30*time.Second)
@@ -58,7 +70,7 @@ func Run(ctx context.Context, cfg Config, poll time.Duration, status *Status, lo
 			status.seq.Store(uint64(p.ProjectedSeq()))
 			if err != nil {
 				if ctx.Err() == nil {
-					status.healthy.Store(false)
+					status.fail()
 					log.Warn("projector: catch-up failed; rebuilding from the checkpoint", "err", err)
 					sleep(ctx, backoff)
 				}
