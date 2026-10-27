@@ -6,7 +6,7 @@ module github.com/SrijitGyawali/Centralized-Exchange
 // The `go` line pins the minimum language version and, since Go 1.21, the
 // toolchain the go command will use. Pinning keeps builds reproducible:
 // everyone (you, CI, Docker) compiles with the same compiler and stdlib.
-go 1.26.5
+go 1.26.10
 
 require (
 	github.com/coder/websocket v1.8.15
