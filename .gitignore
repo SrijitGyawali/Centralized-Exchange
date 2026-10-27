@@ -19,6 +19,11 @@
 *.trace
 coverage.*
 /testdata/fuzz-local/
+# ...and are allowed there (the exception must come after the rule).
+!evidence/**/*.pprof
+# Load-test output from `make load-smoke` / `make load-step`; copy a run to
+# evidence/ to keep it.
+/tmp/
 
 # --- Secrets ----------------------------------------------------------------
 # Real configuration lives in .env (ignored). .env.example is committed.
