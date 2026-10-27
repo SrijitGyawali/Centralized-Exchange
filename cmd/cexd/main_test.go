@@ -43,7 +43,9 @@ func startServer(t *testing.T) (addr string, logs *syncBuffer, stop func() error
 
 func startServerWithEnv(t *testing.T, overrides map[string]string) (addr string, logs *syncBuffer, stop func() error) {
 	t.Helper()
-	env := map[string]string{"CEX_HTTP_ADDR": "127.0.0.1:0", "CEX_DATA_DIR": t.TempDir()}
+	// Both listeners on random free ports, so tests never collide with each
+	// other or with a server the developer is running.
+	env := map[string]string{"CEX_HTTP_ADDR": "127.0.0.1:0", "CEX_ADMIN_ADDR": "127.0.0.1:0", "CEX_DATA_DIR": t.TempDir()}
 	for key, value := range overrides {
 		env[key] = value
 	}
@@ -153,7 +155,7 @@ func TestRunRejectsBadConfig(t *testing.T) {
 // silently kill every live stream after a few seconds) and is closed with a
 // reason on shutdown.
 func TestRunServesTheWebUIAndALongLivedStream(t *testing.T) {
-	addr, _, stop := startServerWithEnv(t, map[string]string{
+	addr, logs, stop := startServerWithEnv(t, map[string]string{
 		"CEX_API_TOKENS":      `[{"token":"stream-admin-token-01","user_id":"1","admin":true}]`,
 		"CEX_REQUEST_TIMEOUT": "1s", "CEX_WRITE_TIMEOUT": "2s",
 	})
@@ -166,7 +168,7 @@ func TestRunServesTheWebUIAndALongLivedStream(t *testing.T) {
 
 	resp, err := http.Get("http://" + addr + "/")
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("GET /: %v\nserver logs:\n%s", err, logs)
 	}
 	resp.Body.Close()
 	if resp.StatusCode != 200 || !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/html") {
