@@ -1,0 +1,732 @@
+# HELP cex_build_info Always 1; the labels say which build is running.
+# TYPE cex_build_info gauge
+cex_build_info{go_version="go1.26.10",version="a384d9a"} 1
+# HELP cex_engine_applied_seq Seq of the last applied command.
+# TYPE cex_engine_applied_seq gauge
+cex_engine_applied_seq 26100
+# HELP cex_engine_apply_seconds One command's state transition, snapshot publish and reply: pure engine time.
+# TYPE cex_engine_apply_seconds histogram
+cex_engine_apply_seconds_bucket{command="cancel_order",le="1e-06"} 4
+cex_engine_apply_seconds_bucket{command="cancel_order",le="2.5e-06"} 114
+cex_engine_apply_seconds_bucket{command="cancel_order",le="5e-06"} 410
+cex_engine_apply_seconds_bucket{command="cancel_order",le="1e-05"} 588
+cex_engine_apply_seconds_bucket{command="cancel_order",le="2.5e-05"} 1027
+cex_engine_apply_seconds_bucket{command="cancel_order",le="5e-05"} 3575
+cex_engine_apply_seconds_bucket{command="cancel_order",le="0.0001"} 5050
+cex_engine_apply_seconds_bucket{command="cancel_order",le="0.00025"} 5245
+cex_engine_apply_seconds_bucket{command="cancel_order",le="0.0005"} 5284
+cex_engine_apply_seconds_bucket{command="cancel_order",le="0.001"} 5288
+cex_engine_apply_seconds_bucket{command="cancel_order",le="0.0025"} 5291
+cex_engine_apply_seconds_bucket{command="cancel_order",le="0.005"} 5292
+cex_engine_apply_seconds_bucket{command="cancel_order",le="0.01"} 5292
+cex_engine_apply_seconds_bucket{command="cancel_order",le="+Inf"} 5292
+cex_engine_apply_seconds_sum{command="cancel_order"} 0.2504361379999994
+cex_engine_apply_seconds_count{command="cancel_order"} 5292
+cex_engine_apply_seconds_bucket{command="fund",le="1e-06"} 0
+cex_engine_apply_seconds_bucket{command="fund",le="2.5e-06"} 0
+cex_engine_apply_seconds_bucket{command="fund",le="5e-06"} 0
+cex_engine_apply_seconds_bucket{command="fund",le="1e-05"} 0
+cex_engine_apply_seconds_bucket{command="fund",le="2.5e-05"} 1
+cex_engine_apply_seconds_bucket{command="fund",le="5e-05"} 46
+cex_engine_apply_seconds_bucket{command="fund",le="0.0001"} 95
+cex_engine_apply_seconds_bucket{command="fund",le="0.00025"} 99
+cex_engine_apply_seconds_bucket{command="fund",le="0.0005"} 99
+cex_engine_apply_seconds_bucket{command="fund",le="0.001"} 100
+cex_engine_apply_seconds_bucket{command="fund",le="0.0025"} 100
+cex_engine_apply_seconds_bucket{command="fund",le="0.005"} 100
+cex_engine_apply_seconds_bucket{command="fund",le="0.01"} 100
+cex_engine_apply_seconds_bucket{command="fund",le="+Inf"} 100
+cex_engine_apply_seconds_sum{command="fund"} 0.006221308000000003
+cex_engine_apply_seconds_count{command="fund"} 100
+cex_engine_apply_seconds_bucket{command="place_order",le="1e-06"} 0
+cex_engine_apply_seconds_bucket{command="place_order",le="2.5e-06"} 196
+cex_engine_apply_seconds_bucket{command="place_order",le="5e-06"} 1126
+cex_engine_apply_seconds_bucket{command="place_order",le="1e-05"} 2196
+cex_engine_apply_seconds_bucket{command="place_order",le="2.5e-05"} 3354
+cex_engine_apply_seconds_bucket{command="place_order",le="5e-05"} 13027
+cex_engine_apply_seconds_bucket{command="place_order",le="0.0001"} 19533
+cex_engine_apply_seconds_bucket{command="place_order",le="0.00025"} 20537
+cex_engine_apply_seconds_bucket{command="place_order",le="0.0005"} 20664
+cex_engine_apply_seconds_bucket{command="place_order",le="0.001"} 20695
+cex_engine_apply_seconds_bucket{command="place_order",le="0.0025"} 20704
+cex_engine_apply_seconds_bucket{command="place_order",le="0.005"} 20706
+cex_engine_apply_seconds_bucket{command="place_order",le="0.01"} 20708
+cex_engine_apply_seconds_bucket{command="place_order",le="+Inf"} 20708
+cex_engine_apply_seconds_sum{command="place_order"} 1.056623165000004
+cex_engine_apply_seconds_count{command="place_order"} 20708
+# HELP cex_engine_batch_commands Commands sharing one durable append (group commit).
+# TYPE cex_engine_batch_commands histogram
+cex_engine_batch_commands_bucket{le="1"} 21206
+cex_engine_batch_commands_bucket{le="2"} 21736
+cex_engine_batch_commands_bucket{le="4"} 21990
+cex_engine_batch_commands_bucket{le="8"} 22085
+cex_engine_batch_commands_bucket{le="16"} 22115
+cex_engine_batch_commands_bucket{le="32"} 22123
+cex_engine_batch_commands_bucket{le="64"} 22155
+cex_engine_batch_commands_bucket{le="128"} 22155
+cex_engine_batch_commands_bucket{le="256"} 22155
+cex_engine_batch_commands_bucket{le="512"} 22155
+cex_engine_batch_commands_bucket{le="1024"} 22155
+cex_engine_batch_commands_bucket{le="+Inf"} 22155
+cex_engine_batch_commands_sum 26100
+cex_engine_batch_commands_count 22155
+# HELP cex_engine_batch_limit Most commands one durable append may carry (CEX_BATCH_SIZE; 1 = no group commit).
+# TYPE cex_engine_batch_limit gauge
+cex_engine_batch_limit 64
+# HELP cex_engine_command_seconds Admission to reply for one command: queue wait + durable append + apply.
+# TYPE cex_engine_command_seconds histogram
+cex_engine_command_seconds_bucket{le="5e-05"} 0
+cex_engine_command_seconds_bucket{le="0.0001"} 0
+cex_engine_command_seconds_bucket{le="0.00025"} 0
+cex_engine_command_seconds_bucket{le="0.0005"} 0
+cex_engine_command_seconds_bucket{le="0.001"} 0
+cex_engine_command_seconds_bucket{le="0.0015"} 0
+cex_engine_command_seconds_bucket{le="0.002"} 0
+cex_engine_command_seconds_bucket{le="0.003"} 6310
+cex_engine_command_seconds_bucket{le="0.005"} 18342
+cex_engine_command_seconds_bucket{le="0.0075"} 20435
+cex_engine_command_seconds_bucket{le="0.01"} 21544
+cex_engine_command_seconds_bucket{le="0.025"} 23278
+cex_engine_command_seconds_bucket{le="0.05"} 23930
+cex_engine_command_seconds_bucket{le="0.1"} 24194
+cex_engine_command_seconds_bucket{le="0.25"} 24524
+cex_engine_command_seconds_bucket{le="0.5"} 25001
+cex_engine_command_seconds_bucket{le="1"} 25573
+cex_engine_command_seconds_bucket{le="2.5"} 26100
+cex_engine_command_seconds_bucket{le="5"} 26100
+cex_engine_command_seconds_bucket{le="10"} 26100
+cex_engine_command_seconds_bucket{le="+Inf"} 26100
+cex_engine_command_seconds_sum 1487.942592701001
+cex_engine_command_seconds_count 26100
+# HELP cex_engine_commands_total Commands applied, by kind and outcome (accepted, duplicate, or the rejection reason).
+# TYPE cex_engine_commands_total counter
+cex_engine_commands_total{command="cancel_order",outcome="accepted"} 5
+cex_engine_commands_total{command="cancel_order",outcome="duplicate"} 0
+cex_engine_commands_total{command="cancel_order",outcome="insufficient_funds"} 0
+cex_engine_commands_total{command="cancel_order",outcome="invalid"} 0
+cex_engine_commands_total{command="cancel_order",outcome="key_conflict"} 0
+cex_engine_commands_total{command="cancel_order",outcome="supply_cap"} 0
+cex_engine_commands_total{command="cancel_order",outcome="unknown_order"} 5287
+cex_engine_commands_total{command="fund",outcome="accepted"} 100
+cex_engine_commands_total{command="fund",outcome="duplicate"} 0
+cex_engine_commands_total{command="fund",outcome="insufficient_funds"} 0
+cex_engine_commands_total{command="fund",outcome="invalid"} 0
+cex_engine_commands_total{command="fund",outcome="key_conflict"} 0
+cex_engine_commands_total{command="fund",outcome="supply_cap"} 0
+cex_engine_commands_total{command="fund",outcome="unknown_order"} 0
+cex_engine_commands_total{command="place_order",outcome="accepted"} 20708
+cex_engine_commands_total{command="place_order",outcome="duplicate"} 0
+cex_engine_commands_total{command="place_order",outcome="insufficient_funds"} 0
+cex_engine_commands_total{command="place_order",outcome="invalid"} 0
+cex_engine_commands_total{command="place_order",outcome="key_conflict"} 0
+cex_engine_commands_total{command="place_order",outcome="supply_cap"} 0
+cex_engine_commands_total{command="place_order",outcome="unknown_order"} 0
+# HELP cex_engine_durable_seconds One journal append (encode, write, fsync) for a whole batch.
+# TYPE cex_engine_durable_seconds histogram
+cex_engine_durable_seconds_bucket{le="5e-05"} 0
+cex_engine_durable_seconds_bucket{le="0.0001"} 0
+cex_engine_durable_seconds_bucket{le="0.00025"} 0
+cex_engine_durable_seconds_bucket{le="0.0005"} 0
+cex_engine_durable_seconds_bucket{le="0.00075"} 0
+cex_engine_durable_seconds_bucket{le="0.001"} 0
+cex_engine_durable_seconds_bucket{le="0.00125"} 0
+cex_engine_durable_seconds_bucket{le="0.0015"} 0
+cex_engine_durable_seconds_bucket{le="0.002"} 0
+cex_engine_durable_seconds_bucket{le="0.003"} 7396
+cex_engine_durable_seconds_bucket{le="0.005"} 19869
+cex_engine_durable_seconds_bucket{le="0.0075"} 21055
+cex_engine_durable_seconds_bucket{le="0.01"} 21563
+cex_engine_durable_seconds_bucket{le="0.025"} 22024
+cex_engine_durable_seconds_bucket{le="0.05"} 22102
+cex_engine_durable_seconds_bucket{le="0.1"} 22121
+cex_engine_durable_seconds_bucket{le="0.25"} 22139
+cex_engine_durable_seconds_bucket{le="1"} 22154
+cex_engine_durable_seconds_bucket{le="+Inf"} 22155
+cex_engine_durable_seconds_sum 97.42595878800094
+cex_engine_durable_seconds_count 22155
+# HELP cex_engine_fills_total Trades executed (one per maker order matched).
+# TYPE cex_engine_fills_total counter
+cex_engine_fills_total 16440
+# HELP cex_engine_halted 1 if the engine stopped trading after a storage or apply failure.
+# TYPE cex_engine_halted gauge
+cex_engine_halted 0
+# HELP cex_engine_query_seconds One read-only query run on the owner goroutine.
+# TYPE cex_engine_query_seconds histogram
+cex_engine_query_seconds_bucket{le="1e-06"} 0
+cex_engine_query_seconds_bucket{le="2.5e-06"} 0
+cex_engine_query_seconds_bucket{le="5e-06"} 0
+cex_engine_query_seconds_bucket{le="1e-05"} 0
+cex_engine_query_seconds_bucket{le="2.5e-05"} 0
+cex_engine_query_seconds_bucket{le="5e-05"} 0
+cex_engine_query_seconds_bucket{le="0.0001"} 0
+cex_engine_query_seconds_bucket{le="0.00025"} 0
+cex_engine_query_seconds_bucket{le="0.0005"} 0
+cex_engine_query_seconds_bucket{le="0.001"} 0
+cex_engine_query_seconds_bucket{le="0.0025"} 0
+cex_engine_query_seconds_bucket{le="0.005"} 0
+cex_engine_query_seconds_bucket{le="0.01"} 0
+cex_engine_query_seconds_bucket{le="+Inf"} 0
+cex_engine_query_seconds_sum 0
+cex_engine_query_seconds_count 0
+# HELP cex_engine_queue_capacity How many requests may wait; when length reaches it, new ones are refused.
+# TYPE cex_engine_queue_capacity gauge
+cex_engine_queue_capacity 1024
+# HELP cex_engine_queue_length Admitted requests waiting for the owner goroutine.
+# TYPE cex_engine_queue_length gauge
+cex_engine_queue_length 0
+# HELP cex_engine_queue_wait_seconds Time a request waited in the intake queue before the owner goroutine took it.
+# TYPE cex_engine_queue_wait_seconds histogram
+cex_engine_queue_wait_seconds_bucket{le="5e-05"} 18220
+cex_engine_queue_wait_seconds_bucket{le="0.0001"} 18315
+cex_engine_queue_wait_seconds_bucket{le="0.00025"} 18534
+cex_engine_queue_wait_seconds_bucket{le="0.0005"} 18882
+cex_engine_queue_wait_seconds_bucket{le="0.001"} 19494
+cex_engine_queue_wait_seconds_bucket{le="0.0015"} 20100
+cex_engine_queue_wait_seconds_bucket{le="0.002"} 20676
+cex_engine_queue_wait_seconds_bucket{le="0.003"} 21498
+cex_engine_queue_wait_seconds_bucket{le="0.005"} 22450
+cex_engine_queue_wait_seconds_bucket{le="0.0075"} 23006
+cex_engine_queue_wait_seconds_bucket{le="0.01"} 23345
+cex_engine_queue_wait_seconds_bucket{le="0.025"} 23994
+cex_engine_queue_wait_seconds_bucket{le="0.05"} 24287
+cex_engine_queue_wait_seconds_bucket{le="0.1"} 24568
+cex_engine_queue_wait_seconds_bucket{le="0.25"} 25034
+cex_engine_queue_wait_seconds_bucket{le="0.5"} 25374
+cex_engine_queue_wait_seconds_bucket{le="1"} 25840
+cex_engine_queue_wait_seconds_bucket{le="2.5"} 26100
+cex_engine_queue_wait_seconds_bucket{le="5"} 26100
+cex_engine_queue_wait_seconds_bucket{le="10"} 26100
+cex_engine_queue_wait_seconds_bucket{le="+Inf"} 26100
+cex_engine_queue_wait_seconds_sum 891.1106821020041
+cex_engine_queue_wait_seconds_count 26100
+# HELP cex_engine_refused_total Requests turned away before admission, by reason. Overloaded means the queue was full.
+# TYPE cex_engine_refused_total counter
+cex_engine_refused_total{reason="closed"} 0
+cex_engine_refused_total{reason="halted"} 0
+cex_engine_refused_total{reason="overloaded"} 0
+# HELP cex_http_request_duration_seconds Server-side HTTP latency, by route pattern and status code.
+# TYPE cex_http_request_duration_seconds histogram
+cex_http_request_duration_seconds_bucket{code="200",route="DELETE /v1/orders/{id}",le="5e-05"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="DELETE /v1/orders/{id}",le="0.0001"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="DELETE /v1/orders/{id}",le="0.00025"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="DELETE /v1/orders/{id}",le="0.0005"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="DELETE /v1/orders/{id}",le="0.001"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="DELETE /v1/orders/{id}",le="0.0015"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="DELETE /v1/orders/{id}",le="0.002"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="DELETE /v1/orders/{id}",le="0.003"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="DELETE /v1/orders/{id}",le="0.005"} 5
+cex_http_request_duration_seconds_bucket{code="200",route="DELETE /v1/orders/{id}",le="0.0075"} 5
+cex_http_request_duration_seconds_bucket{code="200",route="DELETE /v1/orders/{id}",le="0.01"} 5
+cex_http_request_duration_seconds_bucket{code="200",route="DELETE /v1/orders/{id}",le="0.025"} 5
+cex_http_request_duration_seconds_bucket{code="200",route="DELETE /v1/orders/{id}",le="0.05"} 5
+cex_http_request_duration_seconds_bucket{code="200",route="DELETE /v1/orders/{id}",le="0.1"} 5
+cex_http_request_duration_seconds_bucket{code="200",route="DELETE /v1/orders/{id}",le="0.25"} 5
+cex_http_request_duration_seconds_bucket{code="200",route="DELETE /v1/orders/{id}",le="0.5"} 5
+cex_http_request_duration_seconds_bucket{code="200",route="DELETE /v1/orders/{id}",le="1"} 5
+cex_http_request_duration_seconds_bucket{code="200",route="DELETE /v1/orders/{id}",le="2.5"} 5
+cex_http_request_duration_seconds_bucket{code="200",route="DELETE /v1/orders/{id}",le="5"} 5
+cex_http_request_duration_seconds_bucket{code="200",route="DELETE /v1/orders/{id}",le="10"} 5
+cex_http_request_duration_seconds_bucket{code="200",route="DELETE /v1/orders/{id}",le="+Inf"} 5
+cex_http_request_duration_seconds_sum{code="200",route="DELETE /v1/orders/{id}"} 0.017130853
+cex_http_request_duration_seconds_count{code="200",route="DELETE /v1/orders/{id}"} 5
+cex_http_request_duration_seconds_bucket{code="200",route="GET /readyz",le="5e-05"} 29
+cex_http_request_duration_seconds_bucket{code="200",route="GET /readyz",le="0.0001"} 30
+cex_http_request_duration_seconds_bucket{code="200",route="GET /readyz",le="0.00025"} 31
+cex_http_request_duration_seconds_bucket{code="200",route="GET /readyz",le="0.0005"} 31
+cex_http_request_duration_seconds_bucket{code="200",route="GET /readyz",le="0.001"} 31
+cex_http_request_duration_seconds_bucket{code="200",route="GET /readyz",le="0.0015"} 31
+cex_http_request_duration_seconds_bucket{code="200",route="GET /readyz",le="0.002"} 31
+cex_http_request_duration_seconds_bucket{code="200",route="GET /readyz",le="0.003"} 31
+cex_http_request_duration_seconds_bucket{code="200",route="GET /readyz",le="0.005"} 31
+cex_http_request_duration_seconds_bucket{code="200",route="GET /readyz",le="0.0075"} 31
+cex_http_request_duration_seconds_bucket{code="200",route="GET /readyz",le="0.01"} 31
+cex_http_request_duration_seconds_bucket{code="200",route="GET /readyz",le="0.025"} 31
+cex_http_request_duration_seconds_bucket{code="200",route="GET /readyz",le="0.05"} 31
+cex_http_request_duration_seconds_bucket{code="200",route="GET /readyz",le="0.1"} 31
+cex_http_request_duration_seconds_bucket{code="200",route="GET /readyz",le="0.25"} 31
+cex_http_request_duration_seconds_bucket{code="200",route="GET /readyz",le="0.5"} 31
+cex_http_request_duration_seconds_bucket{code="200",route="GET /readyz",le="1"} 31
+cex_http_request_duration_seconds_bucket{code="200",route="GET /readyz",le="2.5"} 31
+cex_http_request_duration_seconds_bucket{code="200",route="GET /readyz",le="5"} 31
+cex_http_request_duration_seconds_bucket{code="200",route="GET /readyz",le="10"} 31
+cex_http_request_duration_seconds_bucket{code="200",route="GET /readyz",le="+Inf"} 31
+cex_http_request_duration_seconds_sum{code="200",route="GET /readyz"} 0.0007167290000000003
+cex_http_request_duration_seconds_count{code="200",route="GET /readyz"} 31
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/admin/fund",le="5e-05"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/admin/fund",le="0.0001"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/admin/fund",le="0.00025"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/admin/fund",le="0.0005"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/admin/fund",le="0.001"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/admin/fund",le="0.0015"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/admin/fund",le="0.002"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/admin/fund",le="0.003"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/admin/fund",le="0.005"} 69
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/admin/fund",le="0.0075"} 90
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/admin/fund",le="0.01"} 95
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/admin/fund",le="0.025"} 99
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/admin/fund",le="0.05"} 99
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/admin/fund",le="0.1"} 99
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/admin/fund",le="0.25"} 100
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/admin/fund",le="0.5"} 100
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/admin/fund",le="1"} 100
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/admin/fund",le="2.5"} 100
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/admin/fund",le="5"} 100
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/admin/fund",le="10"} 100
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/admin/fund",le="+Inf"} 100
+cex_http_request_duration_seconds_sum{code="200",route="POST /v1/admin/fund"} 0.6565917789999999
+cex_http_request_duration_seconds_count{code="200",route="POST /v1/admin/fund"} 100
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/orders",le="5e-05"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/orders",le="0.0001"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/orders",le="0.00025"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/orders",le="0.0005"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/orders",le="0.001"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/orders",le="0.0015"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/orders",le="0.002"} 0
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/orders",le="0.003"} 3822
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/orders",le="0.005"} 14426
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/orders",le="0.0075"} 16129
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/orders",le="0.01"} 17043
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/orders",le="0.025"} 18470
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/orders",le="0.05"} 18997
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/orders",le="0.1"} 19207
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/orders",le="0.25"} 19454
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/orders",le="0.5"} 19833
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/orders",le="1"} 20277
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/orders",le="2.5"} 20708
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/orders",le="5"} 20708
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/orders",le="10"} 20708
+cex_http_request_duration_seconds_bucket{code="200",route="POST /v1/orders",le="+Inf"} 20708
+cex_http_request_duration_seconds_sum{code="200",route="POST /v1/orders"} 1191.8692282629995
+cex_http_request_duration_seconds_count{code="200",route="POST /v1/orders"} 20708
+cex_http_request_duration_seconds_bucket{code="404",route="DELETE /v1/orders/{id}",le="5e-05"} 0
+cex_http_request_duration_seconds_bucket{code="404",route="DELETE /v1/orders/{id}",le="0.0001"} 0
+cex_http_request_duration_seconds_bucket{code="404",route="DELETE /v1/orders/{id}",le="0.00025"} 0
+cex_http_request_duration_seconds_bucket{code="404",route="DELETE /v1/orders/{id}",le="0.0005"} 0
+cex_http_request_duration_seconds_bucket{code="404",route="DELETE /v1/orders/{id}",le="0.001"} 0
+cex_http_request_duration_seconds_bucket{code="404",route="DELETE /v1/orders/{id}",le="0.0015"} 0
+cex_http_request_duration_seconds_bucket{code="404",route="DELETE /v1/orders/{id}",le="0.002"} 0
+cex_http_request_duration_seconds_bucket{code="404",route="DELETE /v1/orders/{id}",le="0.003"} 1090
+cex_http_request_duration_seconds_bucket{code="404",route="DELETE /v1/orders/{id}",le="0.005"} 3586
+cex_http_request_duration_seconds_bucket{code="404",route="DELETE /v1/orders/{id}",le="0.0075"} 4059
+cex_http_request_duration_seconds_bucket{code="404",route="DELETE /v1/orders/{id}",le="0.01"} 4302
+cex_http_request_duration_seconds_bucket{code="404",route="DELETE /v1/orders/{id}",le="0.025"} 4678
+cex_http_request_duration_seconds_bucket{code="404",route="DELETE /v1/orders/{id}",le="0.05"} 4821
+cex_http_request_duration_seconds_bucket{code="404",route="DELETE /v1/orders/{id}",le="0.1"} 4882
+cex_http_request_duration_seconds_bucket{code="404",route="DELETE /v1/orders/{id}",le="0.25"} 4962
+cex_http_request_duration_seconds_bucket{code="404",route="DELETE /v1/orders/{id}",le="0.5"} 5061
+cex_http_request_duration_seconds_bucket{code="404",route="DELETE /v1/orders/{id}",le="1"} 5190
+cex_http_request_duration_seconds_bucket{code="404",route="DELETE /v1/orders/{id}",le="2.5"} 5287
+cex_http_request_duration_seconds_bucket{code="404",route="DELETE /v1/orders/{id}",le="5"} 5287
+cex_http_request_duration_seconds_bucket{code="404",route="DELETE /v1/orders/{id}",le="10"} 5287
+cex_http_request_duration_seconds_bucket{code="404",route="DELETE /v1/orders/{id}",le="+Inf"} 5287
+cex_http_request_duration_seconds_sum{code="404",route="DELETE /v1/orders/{id}"} 302.7691639860003
+cex_http_request_duration_seconds_count{code="404",route="DELETE /v1/orders/{id}"} 5287
+# HELP cex_http_requests_in_flight HTTP requests being served right now.
+# TYPE cex_http_requests_in_flight gauge
+cex_http_requests_in_flight 0
+# HELP cex_journal_appended_bytes_total Bytes appended to the journal since start.
+# TYPE cex_journal_appended_bytes_total counter
+cex_journal_appended_bytes_total 1.485465e+06
+# HELP cex_journal_file_bytes Size of journal.wal on disk.
+# TYPE cex_journal_file_bytes gauge
+cex_journal_file_bytes 1.485465e+06
+# HELP cex_journal_fsync_seconds fsync after a write: waiting for the storage device.
+# TYPE cex_journal_fsync_seconds histogram
+cex_journal_fsync_seconds_bucket{le="5e-05"} 0
+cex_journal_fsync_seconds_bucket{le="0.0001"} 0
+cex_journal_fsync_seconds_bucket{le="0.00025"} 0
+cex_journal_fsync_seconds_bucket{le="0.0005"} 0
+cex_journal_fsync_seconds_bucket{le="0.00075"} 0
+cex_journal_fsync_seconds_bucket{le="0.001"} 0
+cex_journal_fsync_seconds_bucket{le="0.00125"} 0
+cex_journal_fsync_seconds_bucket{le="0.0015"} 0
+cex_journal_fsync_seconds_bucket{le="0.002"} 0
+cex_journal_fsync_seconds_bucket{le="0.003"} 7872
+cex_journal_fsync_seconds_bucket{le="0.005"} 19936
+cex_journal_fsync_seconds_bucket{le="0.0075"} 21072
+cex_journal_fsync_seconds_bucket{le="0.01"} 21569
+cex_journal_fsync_seconds_bucket{le="0.025"} 22025
+cex_journal_fsync_seconds_bucket{le="0.05"} 22102
+cex_journal_fsync_seconds_bucket{le="0.1"} 22121
+cex_journal_fsync_seconds_bucket{le="0.25"} 22139
+cex_journal_fsync_seconds_bucket{le="1"} 22154
+cex_journal_fsync_seconds_bucket{le="+Inf"} 22155
+cex_journal_fsync_seconds_sum 96.60098499800056
+cex_journal_fsync_seconds_count 22155
+# HELP cex_journal_write_seconds Writing one batch of frames into the OS page cache.
+# TYPE cex_journal_write_seconds histogram
+cex_journal_write_seconds_bucket{le="5e-05"} 20589
+cex_journal_write_seconds_bucket{le="0.0001"} 21883
+cex_journal_write_seconds_bucket{le="0.00025"} 22099
+cex_journal_write_seconds_bucket{le="0.0005"} 22139
+cex_journal_write_seconds_bucket{le="0.00075"} 22143
+cex_journal_write_seconds_bucket{le="0.001"} 22146
+cex_journal_write_seconds_bucket{le="0.00125"} 22149
+cex_journal_write_seconds_bucket{le="0.0015"} 22149
+cex_journal_write_seconds_bucket{le="0.002"} 22150
+cex_journal_write_seconds_bucket{le="0.003"} 22154
+cex_journal_write_seconds_bucket{le="0.005"} 22154
+cex_journal_write_seconds_bucket{le="0.0075"} 22154
+cex_journal_write_seconds_bucket{le="0.01"} 22155
+cex_journal_write_seconds_bucket{le="0.025"} 22155
+cex_journal_write_seconds_bucket{le="0.05"} 22155
+cex_journal_write_seconds_bucket{le="0.1"} 22155
+cex_journal_write_seconds_bucket{le="0.25"} 22155
+cex_journal_write_seconds_bucket{le="1"} 22155
+cex_journal_write_seconds_bucket{le="+Inf"} 22155
+cex_journal_write_seconds_sum 0.6588791890000016
+cex_journal_write_seconds_count 22155
+# HELP cex_marketdata_delivered_bytes_total Bytes placed in subscriber buffers: the feed's bandwidth.
+# TYPE cex_marketdata_delivered_bytes_total counter
+cex_marketdata_delivered_bytes_total 3.39656e+06
+# HELP cex_marketdata_delivered_total Messages placed in subscriber buffers.
+# TYPE cex_marketdata_delivered_total counter
+cex_marketdata_delivered_total 945
+# HELP cex_marketdata_published_total Snapshots encoded (one per new Seq the hub saw).
+# TYPE cex_marketdata_published_total counter
+cex_marketdata_published_total 1241
+# HELP cex_marketdata_refused_total Subscriptions refused (limit reached or shutting down).
+# TYPE cex_marketdata_refused_total counter
+cex_marketdata_refused_total 0
+# HELP cex_marketdata_slow_drops_total Subscribers disconnected for being too slow.
+# TYPE cex_marketdata_slow_drops_total counter
+cex_marketdata_slow_drops_total 5
+# HELP cex_marketdata_subscribers Open WebSocket streams.
+# TYPE cex_marketdata_subscribers gauge
+cex_marketdata_subscribers 0
+# HELP cex_projection_enabled 1 if the PostgreSQL read model is configured.
+# TYPE cex_projection_enabled gauge
+cex_projection_enabled 1
+# HELP cex_projection_failures_total Failed projector starts or catch-ups (each followed by a retry).
+# TYPE cex_projection_failures_total counter
+cex_projection_failures_total 0
+# HELP cex_projection_healthy 1 if the projector is following the journal normally.
+# TYPE cex_projection_healthy gauge
+cex_projection_healthy 1
+# HELP cex_projection_lag_commands Applied minus projected Seq: how far the read model is behind.
+# TYPE cex_projection_lag_commands gauge
+cex_projection_lag_commands 13
+# HELP cex_projection_projected_seq Seq of the last command committed to PostgreSQL.
+# TYPE cex_projection_projected_seq gauge
+cex_projection_projected_seq 26087
+# HELP cex_recovery_commands Commands replayed from the journal at startup.
+# TYPE cex_recovery_commands gauge
+cex_recovery_commands 0
+# HELP cex_recovery_duration_seconds Wall time from opening the journal to the engine running.
+# TYPE cex_recovery_duration_seconds gauge
+cex_recovery_duration_seconds 0.008085324
+# HELP cex_recovery_truncated_bytes Torn-tail bytes cut off the journal at startup (normally 0).
+# TYPE cex_recovery_truncated_bytes gauge
+cex_recovery_truncated_bytes 0
+# HELP go_gc_cleanups_executed_cleanups_total Approximate total count of cleanup functions (created by runtime.AddCleanup) executed by the runtime. Subtract /gc/cleanups/queued:cleanups to approximate cleanup queue length. Useful for detecting slow cleanups holding up the queue. Sourced from /gc/cleanups/executed:cleanups.
+# TYPE go_gc_cleanups_executed_cleanups_total counter
+go_gc_cleanups_executed_cleanups_total 0
+# HELP go_gc_cleanups_queued_cleanups_total Approximate total count of cleanup functions (created by runtime.AddCleanup) queued by the runtime for execution. Subtract from /gc/cleanups/executed:cleanups to approximate cleanup queue length. Useful for detecting slow cleanups holding up the queue. Sourced from /gc/cleanups/queued:cleanups.
+# TYPE go_gc_cleanups_queued_cleanups_total counter
+go_gc_cleanups_queued_cleanups_total 0
+# HELP go_gc_cycles_automatic_gc_cycles_total Count of completed GC cycles generated by the Go runtime. Sourced from /gc/cycles/automatic:gc-cycles.
+# TYPE go_gc_cycles_automatic_gc_cycles_total counter
+go_gc_cycles_automatic_gc_cycles_total 200
+# HELP go_gc_cycles_forced_gc_cycles_total Count of completed GC cycles forced by the application. Sourced from /gc/cycles/forced:gc-cycles.
+# TYPE go_gc_cycles_forced_gc_cycles_total counter
+go_gc_cycles_forced_gc_cycles_total 0
+# HELP go_gc_cycles_total_gc_cycles_total Count of all completed GC cycles. Sourced from /gc/cycles/total:gc-cycles.
+# TYPE go_gc_cycles_total_gc_cycles_total counter
+go_gc_cycles_total_gc_cycles_total 200
+# HELP go_gc_duration_seconds A summary of the wall-time pause (stop-the-world) duration in garbage collection cycles.
+# TYPE go_gc_duration_seconds summary
+go_gc_duration_seconds{quantile="0"} 6.7973e-05
+go_gc_duration_seconds{quantile="0.25"} 0.000111472
+go_gc_duration_seconds{quantile="0.5"} 0.000158107
+go_gc_duration_seconds{quantile="0.75"} 0.00024427
+go_gc_duration_seconds{quantile="1"} 0.004371985
+go_gc_duration_seconds_sum 0.050588068
+go_gc_duration_seconds_count 200
+# HELP go_gc_finalizers_executed_finalizers_total Total count of finalizer functions (created by runtime.SetFinalizer) executed by the runtime. Subtract /gc/finalizers/queued:finalizers to approximate finalizer queue length. Useful for detecting finalizers overwhelming the queue, either by being too slow, or by there being too many of them. Sourced from /gc/finalizers/executed:finalizers.
+# TYPE go_gc_finalizers_executed_finalizers_total counter
+go_gc_finalizers_executed_finalizers_total 0
+# HELP go_gc_finalizers_queued_finalizers_total Total count of finalizer functions (created by runtime.SetFinalizer) and queued by the runtime for execution. Subtract from /gc/finalizers/executed:finalizers to approximate finalizer queue length. Useful for detecting slow finalizers holding up the queue. Sourced from /gc/finalizers/queued:finalizers.
+# TYPE go_gc_finalizers_queued_finalizers_total counter
+go_gc_finalizers_queued_finalizers_total 0
+# HELP go_gc_gogc_percent Heap size target percentage configured by the user, otherwise 100. This value is set by the GOGC environment variable, and the runtime/debug.SetGCPercent function. Sourced from /gc/gogc:percent.
+# TYPE go_gc_gogc_percent gauge
+go_gc_gogc_percent 100
+# HELP go_gc_gomemlimit_bytes Go runtime memory limit configured by the user, otherwise math.MaxInt64. This value is set by the GOMEMLIMIT environment variable, and the runtime/debug.SetMemoryLimit function. Sourced from /gc/gomemlimit:bytes.
+# TYPE go_gc_gomemlimit_bytes gauge
+go_gc_gomemlimit_bytes 9.223372036854776e+18
+# HELP go_gc_heap_allocs_by_size_bytes Distribution of heap allocations by approximate size. Bucket counts increase monotonically. Note that this does not include tiny objects as defined by /gc/heap/tiny/allocs:objects, only tiny blocks. Sourced from /gc/heap/allocs-by-size:bytes.
+# TYPE go_gc_heap_allocs_by_size_bytes histogram
+go_gc_heap_allocs_by_size_bytes_bucket{le="8.999999999999998"} 46341
+go_gc_heap_allocs_by_size_bytes_bucket{le="24.999999999999996"} 5.144237e+06
+go_gc_heap_allocs_by_size_bytes_bucket{le="64.99999999999999"} 7.744523e+06
+go_gc_heap_allocs_by_size_bytes_bucket{le="144.99999999999997"} 8.608235e+06
+go_gc_heap_allocs_by_size_bytes_bucket{le="320.99999999999994"} 8.907506e+06
+go_gc_heap_allocs_by_size_bytes_bucket{le="704.9999999999999"} 9.059841e+06
+go_gc_heap_allocs_by_size_bytes_bucket{le="1536.9999999999998"} 9.082777e+06
+go_gc_heap_allocs_by_size_bytes_bucket{le="3200.9999999999995"} 9.123293e+06
+go_gc_heap_allocs_by_size_bytes_bucket{le="6528.999999999999"} 9.139689e+06
+go_gc_heap_allocs_by_size_bytes_bucket{le="13568.999999999998"} 9.145733e+06
+go_gc_heap_allocs_by_size_bytes_bucket{le="27264.999999999996"} 9.148179e+06
+go_gc_heap_allocs_by_size_bytes_bucket{le="+Inf"} 9.150266e+06
+go_gc_heap_allocs_by_size_bytes_sum 1.00774772e+09
+go_gc_heap_allocs_by_size_bytes_count 9.150266e+06
+# HELP go_gc_heap_allocs_bytes_total Cumulative sum of memory allocated to the heap by the application. Sourced from /gc/heap/allocs:bytes.
+# TYPE go_gc_heap_allocs_bytes_total counter
+go_gc_heap_allocs_bytes_total 1.00774772e+09
+# HELP go_gc_heap_allocs_objects_total Cumulative count of heap allocations triggered by the application. Note that this does not include tiny objects as defined by /gc/heap/tiny/allocs:objects, only tiny blocks. Sourced from /gc/heap/allocs:objects.
+# TYPE go_gc_heap_allocs_objects_total counter
+go_gc_heap_allocs_objects_total 9.150266e+06
+# HELP go_gc_heap_frees_by_size_bytes Distribution of freed heap allocations by approximate size. Bucket counts increase monotonically. Note that this does not include tiny objects as defined by /gc/heap/tiny/allocs:objects, only tiny blocks. Sourced from /gc/heap/frees-by-size:bytes.
+# TYPE go_gc_heap_frees_by_size_bytes histogram
+go_gc_heap_frees_by_size_bytes_bucket{le="8.999999999999998"} 45847
+go_gc_heap_frees_by_size_bytes_bucket{le="24.999999999999996"} 5.012892e+06
+go_gc_heap_frees_by_size_bytes_bucket{le="64.99999999999999"} 7.517682e+06
+go_gc_heap_frees_by_size_bytes_bucket{le="144.99999999999997"} 8.363193e+06
+go_gc_heap_frees_by_size_bytes_bucket{le="320.99999999999994"} 8.653732e+06
+go_gc_heap_frees_by_size_bytes_bucket{le="704.9999999999999"} 8.802938e+06
+go_gc_heap_frees_by_size_bytes_bucket{le="1536.9999999999998"} 8.82553e+06
+go_gc_heap_frees_by_size_bytes_bucket{le="3200.9999999999995"} 8.865522e+06
+go_gc_heap_frees_by_size_bytes_bucket{le="6528.999999999999"} 8.880971e+06
+go_gc_heap_frees_by_size_bytes_bucket{le="13568.999999999998"} 8.886926e+06
+go_gc_heap_frees_by_size_bytes_bucket{le="27264.999999999996"} 8.889321e+06
+go_gc_heap_frees_by_size_bytes_bucket{le="+Inf"} 8.891308e+06
+go_gc_heap_frees_by_size_bytes_sum 9.74938152e+08
+go_gc_heap_frees_by_size_bytes_count 8.891308e+06
+# HELP go_gc_heap_frees_bytes_total Cumulative sum of heap memory freed by the garbage collector. Sourced from /gc/heap/frees:bytes.
+# TYPE go_gc_heap_frees_bytes_total counter
+go_gc_heap_frees_bytes_total 9.74938152e+08
+# HELP go_gc_heap_frees_objects_total Cumulative count of heap allocations whose storage was freed by the garbage collector. Note that this does not include tiny objects as defined by /gc/heap/tiny/allocs:objects, only tiny blocks. Sourced from /gc/heap/frees:objects.
+# TYPE go_gc_heap_frees_objects_total counter
+go_gc_heap_frees_objects_total 8.891308e+06
+# HELP go_gc_heap_goal_bytes Heap size target for the end of the GC cycle. Sourced from /gc/heap/goal:bytes.
+# TYPE go_gc_heap_goal_bytes gauge
+go_gc_heap_goal_bytes 4.5635938e+07
+# HELP go_gc_heap_live_bytes Heap memory occupied by live objects that were marked by the previous GC. Sourced from /gc/heap/live:bytes.
+# TYPE go_gc_heap_live_bytes gauge
+go_gc_heap_live_bytes 2.23538e+07
+# HELP go_gc_heap_objects_objects Number of objects, live or unswept, occupying heap memory. Sourced from /gc/heap/objects:objects.
+# TYPE go_gc_heap_objects_objects gauge
+go_gc_heap_objects_objects 258958
+# HELP go_gc_heap_tiny_allocs_objects_total Count of small allocations that are packed together into blocks. These allocations are counted separately from other allocations because each individual allocation is not tracked by the runtime, only their block. Each block is already accounted for in allocs-by-size and frees-by-size. Sourced from /gc/heap/tiny/allocs:objects.
+# TYPE go_gc_heap_tiny_allocs_objects_total counter
+go_gc_heap_tiny_allocs_objects_total 1.360978e+06
+# HELP go_gc_limiter_last_enabled_gc_cycle GC cycle the last time the GC CPU limiter was enabled. This metric is useful for diagnosing the root cause of an out-of-memory error, because the limiter trades memory for CPU time when the GC's CPU time gets too high. This is most likely to occur with use of SetMemoryLimit. The first GC cycle is cycle 1, so a value of 0 indicates that it was never enabled. Sourced from /gc/limiter/last-enabled:gc-cycle.
+# TYPE go_gc_limiter_last_enabled_gc_cycle gauge
+go_gc_limiter_last_enabled_gc_cycle 0
+# HELP go_gc_pauses_seconds Deprecated. Prefer the identical /sched/pauses/total/gc:seconds. Sourced from /gc/pauses:seconds.
+# TYPE go_gc_pauses_seconds histogram
+go_gc_pauses_seconds_bucket{le="6.399999999999999e-08"} 0
+go_gc_pauses_seconds_bucket{le="6.399999999999999e-07"} 0
+go_gc_pauses_seconds_bucket{le="7.167999999999999e-06"} 82
+go_gc_pauses_seconds_bucket{le="8.191999999999999e-05"} 212
+go_gc_pauses_seconds_bucket{le="0.0009175039999999999"} 396
+go_gc_pauses_seconds_bucket{le="0.010485759999999998"} 400
+go_gc_pauses_seconds_bucket{le="0.11744051199999998"} 400
+go_gc_pauses_seconds_bucket{le="+Inf"} 400
+go_gc_pauses_seconds_sum 0.019727615999999996
+go_gc_pauses_seconds_count 400
+# HELP go_gc_scan_globals_bytes The total amount of global variable space that is scannable. Sourced from /gc/scan/globals:bytes.
+# TYPE go_gc_scan_globals_bytes gauge
+go_gc_scan_globals_bytes 288074
+# HELP go_gc_scan_heap_bytes The total amount of heap space that is scannable. Sourced from /gc/scan/heap:bytes.
+# TYPE go_gc_scan_heap_bytes gauge
+go_gc_scan_heap_bytes 1.6275856e+07
+# HELP go_gc_scan_stack_bytes The number of bytes of stack that were scanned last GC cycle. Sourced from /gc/scan/stack:bytes.
+# TYPE go_gc_scan_stack_bytes gauge
+go_gc_scan_stack_bytes 640264
+# HELP go_gc_scan_total_bytes The total amount space that is scannable. Sum of all metrics in /gc/scan. Sourced from /gc/scan/total:bytes.
+# TYPE go_gc_scan_total_bytes gauge
+go_gc_scan_total_bytes 1.7204194e+07
+# HELP go_gc_stack_starting_size_bytes The stack size of new goroutines. Sourced from /gc/stack/starting-size:bytes.
+# TYPE go_gc_stack_starting_size_bytes gauge
+go_gc_stack_starting_size_bytes 4096
+# HELP go_goroutines Number of goroutines that currently exist.
+# TYPE go_goroutines gauge
+go_goroutines 358
+# HELP go_info Information about the Go environment.
+# TYPE go_info gauge
+go_info{version="go1.26.10"} 1
+# HELP go_memstats_alloc_bytes Number of bytes allocated in heap and currently in use. Equals to /memory/classes/heap/objects:bytes.
+# TYPE go_memstats_alloc_bytes gauge
+go_memstats_alloc_bytes 3.2809568e+07
+# HELP go_memstats_alloc_bytes_total Total number of bytes allocated in heap until now, even if released already. Equals to /gc/heap/allocs:bytes.
+# TYPE go_memstats_alloc_bytes_total counter
+go_memstats_alloc_bytes_total 1.00774772e+09
+# HELP go_memstats_buck_hash_sys_bytes Number of bytes used by the profiling bucket hash table. Equals to /memory/classes/profiling/buckets:bytes.
+# TYPE go_memstats_buck_hash_sys_bytes gauge
+go_memstats_buck_hash_sys_bytes 1.563704e+06
+# HELP go_memstats_frees_total Total number of heap objects frees. Equals to /gc/heap/frees:objects + /gc/heap/tiny/allocs:objects.
+# TYPE go_memstats_frees_total counter
+go_memstats_frees_total 1.0252286e+07
+# HELP go_memstats_gc_sys_bytes Number of bytes used for garbage collection system metadata. Equals to /memory/classes/metadata/other:bytes.
+# TYPE go_memstats_gc_sys_bytes gauge
+go_memstats_gc_sys_bytes 4.03584e+06
+# HELP go_memstats_heap_alloc_bytes Number of heap bytes allocated and currently in use, same as go_memstats_alloc_bytes. Equals to /memory/classes/heap/objects:bytes.
+# TYPE go_memstats_heap_alloc_bytes gauge
+go_memstats_heap_alloc_bytes 3.2809568e+07
+# HELP go_memstats_heap_idle_bytes Number of heap bytes waiting to be used. Equals to /memory/classes/heap/released:bytes + /memory/classes/heap/free:bytes.
+# TYPE go_memstats_heap_idle_bytes gauge
+go_memstats_heap_idle_bytes 1.077248e+07
+# HELP go_memstats_heap_inuse_bytes Number of heap bytes that are in use. Equals to /memory/classes/heap/objects:bytes + /memory/classes/heap/unused:bytes
+# TYPE go_memstats_heap_inuse_bytes gauge
+go_memstats_heap_inuse_bytes 3.8412288e+07
+# HELP go_memstats_heap_objects Number of currently allocated objects. Equals to /gc/heap/objects:objects.
+# TYPE go_memstats_heap_objects gauge
+go_memstats_heap_objects 258958
+# HELP go_memstats_heap_released_bytes Number of heap bytes released to OS. Equals to /memory/classes/heap/released:bytes.
+# TYPE go_memstats_heap_released_bytes gauge
+go_memstats_heap_released_bytes 1.622016e+06
+# HELP go_memstats_heap_sys_bytes Number of heap bytes obtained from system. Equals to /memory/classes/heap/objects:bytes + /memory/classes/heap/unused:bytes + /memory/classes/heap/released:bytes + /memory/classes/heap/free:bytes.
+# TYPE go_memstats_heap_sys_bytes gauge
+go_memstats_heap_sys_bytes 4.9184768e+07
+# HELP go_memstats_last_gc_time_seconds Number of seconds since 1970 of last garbage collection.
+# TYPE go_memstats_last_gc_time_seconds gauge
+go_memstats_last_gc_time_seconds 1.793109880919903e+09
+# HELP go_memstats_mallocs_total Total number of heap objects allocated, both live and gc-ed. Semantically a counter version for go_memstats_heap_objects gauge. Equals to /gc/heap/allocs:objects + /gc/heap/tiny/allocs:objects.
+# TYPE go_memstats_mallocs_total counter
+go_memstats_mallocs_total 1.0511244e+07
+# HELP go_memstats_mcache_inuse_bytes Number of bytes in use by mcache structures. Equals to /memory/classes/metadata/mcache/inuse:bytes.
+# TYPE go_memstats_mcache_inuse_bytes gauge
+go_memstats_mcache_inuse_bytes 18368
+# HELP go_memstats_mcache_sys_bytes Number of bytes used for mcache structures obtained from system. Equals to /memory/classes/metadata/mcache/inuse:bytes + /memory/classes/metadata/mcache/free:bytes.
+# TYPE go_memstats_mcache_sys_bytes gauge
+go_memstats_mcache_sys_bytes 32144
+# HELP go_memstats_mspan_inuse_bytes Number of bytes in use by mspan structures. Equals to /memory/classes/metadata/mspan/inuse:bytes.
+# TYPE go_memstats_mspan_inuse_bytes gauge
+go_memstats_mspan_inuse_bytes 495520
+# HELP go_memstats_mspan_sys_bytes Number of bytes used for mspan structures obtained from system. Equals to /memory/classes/metadata/mspan/inuse:bytes + /memory/classes/metadata/mspan/free:bytes.
+# TYPE go_memstats_mspan_sys_bytes gauge
+go_memstats_mspan_sys_bytes 587520
+# HELP go_memstats_next_gc_bytes Number of heap bytes when next garbage collection will take place. Equals to /gc/heap/goal:bytes.
+# TYPE go_memstats_next_gc_bytes gauge
+go_memstats_next_gc_bytes 4.5635938e+07
+# HELP go_memstats_other_sys_bytes Number of bytes used for other system allocations. Equals to /memory/classes/other:bytes.
+# TYPE go_memstats_other_sys_bytes gauge
+go_memstats_other_sys_bytes 1.803088e+06
+# HELP go_memstats_stack_inuse_bytes Number of bytes obtained from system for stack allocator in non-CGO environments. Equals to /memory/classes/heap/stacks:bytes.
+# TYPE go_memstats_stack_inuse_bytes gauge
+go_memstats_stack_inuse_bytes 5.341184e+06
+# HELP go_memstats_stack_sys_bytes Number of bytes obtained from system for stack allocator. Equals to /memory/classes/heap/stacks:bytes + /memory/classes/os-stacks:bytes.
+# TYPE go_memstats_stack_sys_bytes gauge
+go_memstats_stack_sys_bytes 5.341184e+06
+# HELP go_memstats_sys_bytes Number of bytes obtained from system. Equals to /memory/classes/total:byte.
+# TYPE go_memstats_sys_bytes gauge
+go_memstats_sys_bytes 6.2548248e+07
+# HELP go_sched_gomaxprocs_threads The current runtime.GOMAXPROCS setting, or the number of operating system threads that can execute user-level Go code simultaneously. Sourced from /sched/gomaxprocs:threads.
+# TYPE go_sched_gomaxprocs_threads gauge
+go_sched_gomaxprocs_threads 8
+# HELP go_sched_goroutines_created_goroutines_total Count of goroutines created since program start. Sourced from /sched/goroutines-created:goroutines.
+# TYPE go_sched_goroutines_created_goroutines_total counter
+go_sched_goroutines_created_goroutines_total 27311
+# HELP go_sched_goroutines_goroutines Count of live goroutines. Sourced from /sched/goroutines:goroutines.
+# TYPE go_sched_goroutines_goroutines gauge
+go_sched_goroutines_goroutines 373
+# HELP go_sched_goroutines_not_in_go_goroutines Approximate count of goroutines running or blocked in a system call or cgo call. Not guaranteed to add up to /sched/goroutines:goroutines with other goroutine metrics. Sourced from /sched/goroutines/not-in-go:goroutines.
+# TYPE go_sched_goroutines_not_in_go_goroutines gauge
+go_sched_goroutines_not_in_go_goroutines 2
+# HELP go_sched_goroutines_runnable_goroutines Approximate count of goroutines ready to execute, but not executing. Not guaranteed to add up to /sched/goroutines:goroutines with other goroutine metrics. Sourced from /sched/goroutines/runnable:goroutines.
+# TYPE go_sched_goroutines_runnable_goroutines gauge
+go_sched_goroutines_runnable_goroutines 1
+# HELP go_sched_goroutines_running_goroutines Approximate count of goroutines executing. Always less than or equal to /sched/gomaxprocs:threads. Not guaranteed to add up to /sched/goroutines:goroutines with other goroutine metrics. Sourced from /sched/goroutines/running:goroutines.
+# TYPE go_sched_goroutines_running_goroutines gauge
+go_sched_goroutines_running_goroutines 3
+# HELP go_sched_goroutines_waiting_goroutines Approximate count of goroutines waiting on a resource (I/O or sync primitives). Not guaranteed to add up to /sched/goroutines:goroutines with other goroutine metrics. Sourced from /sched/goroutines/waiting:goroutines.
+# TYPE go_sched_goroutines_waiting_goroutines gauge
+go_sched_goroutines_waiting_goroutines 367
+# HELP go_sched_latencies_seconds Distribution of the time goroutines have spent in the scheduler in a runnable state before actually running. Bucket counts increase monotonically. Sourced from /sched/latencies:seconds.
+# TYPE go_sched_latencies_seconds histogram
+go_sched_latencies_seconds_bucket{le="6.399999999999999e-08"} 708
+go_sched_latencies_seconds_bucket{le="6.399999999999999e-07"} 5585
+go_sched_latencies_seconds_bucket{le="7.167999999999999e-06"} 13227
+go_sched_latencies_seconds_bucket{le="8.191999999999999e-05"} 21222
+go_sched_latencies_seconds_bucket{le="0.0009175039999999999"} 26555
+go_sched_latencies_seconds_bucket{le="0.010485759999999998"} 26621
+go_sched_latencies_seconds_bucket{le="0.11744051199999998"} 26642
+go_sched_latencies_seconds_bucket{le="+Inf"} 26642
+go_sched_latencies_seconds_sum 0.7801467519999999
+go_sched_latencies_seconds_count 26642
+# HELP go_sched_pauses_stopping_gc_seconds Distribution of individual GC-related stop-the-world stopping latencies. This is the time it takes from deciding to stop the world until all Ps are stopped. This is a subset of the total GC-related stop-the-world time (/sched/pauses/total/gc:seconds). During this time, some threads may be executing. Bucket counts increase monotonically. Sourced from /sched/pauses/stopping/gc:seconds.
+# TYPE go_sched_pauses_stopping_gc_seconds histogram
+go_sched_pauses_stopping_gc_seconds_bucket{le="6.399999999999999e-08"} 0
+go_sched_pauses_stopping_gc_seconds_bucket{le="6.399999999999999e-07"} 0
+go_sched_pauses_stopping_gc_seconds_bucket{le="7.167999999999999e-06"} 279
+go_sched_pauses_stopping_gc_seconds_bucket{le="8.191999999999999e-05"} 355
+go_sched_pauses_stopping_gc_seconds_bucket{le="0.0009175039999999999"} 398
+go_sched_pauses_stopping_gc_seconds_bucket{le="0.010485759999999998"} 400
+go_sched_pauses_stopping_gc_seconds_bucket{le="0.11744051199999998"} 400
+go_sched_pauses_stopping_gc_seconds_bucket{le="+Inf"} 400
+go_sched_pauses_stopping_gc_seconds_sum 0.006080896
+go_sched_pauses_stopping_gc_seconds_count 400
+# HELP go_sched_pauses_stopping_other_seconds Distribution of individual non-GC-related stop-the-world stopping latencies. This is the time it takes from deciding to stop the world until all Ps are stopped. This is a subset of the total non-GC-related stop-the-world time (/sched/pauses/total/other:seconds). During this time, some threads may be executing. Bucket counts increase monotonically. Sourced from /sched/pauses/stopping/other:seconds.
+# TYPE go_sched_pauses_stopping_other_seconds histogram
+go_sched_pauses_stopping_other_seconds_bucket{le="6.399999999999999e-08"} 0
+go_sched_pauses_stopping_other_seconds_bucket{le="6.399999999999999e-07"} 0
+go_sched_pauses_stopping_other_seconds_bucket{le="7.167999999999999e-06"} 0
+go_sched_pauses_stopping_other_seconds_bucket{le="8.191999999999999e-05"} 0
+go_sched_pauses_stopping_other_seconds_bucket{le="0.0009175039999999999"} 0
+go_sched_pauses_stopping_other_seconds_bucket{le="0.010485759999999998"} 0
+go_sched_pauses_stopping_other_seconds_bucket{le="0.11744051199999998"} 0
+go_sched_pauses_stopping_other_seconds_bucket{le="+Inf"} 0
+go_sched_pauses_stopping_other_seconds_sum 0
+go_sched_pauses_stopping_other_seconds_count 0
+# HELP go_sched_pauses_total_gc_seconds Distribution of individual GC-related stop-the-world pause latencies. This is the time from deciding to stop the world until the world is started again. Some of this time is spent getting all threads to stop (this is measured directly in /sched/pauses/stopping/gc:seconds), during which some threads may still be running. Bucket counts increase monotonically. Sourced from /sched/pauses/total/gc:seconds.
+# TYPE go_sched_pauses_total_gc_seconds histogram
+go_sched_pauses_total_gc_seconds_bucket{le="6.399999999999999e-08"} 0
+go_sched_pauses_total_gc_seconds_bucket{le="6.399999999999999e-07"} 0
+go_sched_pauses_total_gc_seconds_bucket{le="7.167999999999999e-06"} 82
+go_sched_pauses_total_gc_seconds_bucket{le="8.191999999999999e-05"} 212
+go_sched_pauses_total_gc_seconds_bucket{le="0.0009175039999999999"} 396
+go_sched_pauses_total_gc_seconds_bucket{le="0.010485759999999998"} 400
+go_sched_pauses_total_gc_seconds_bucket{le="0.11744051199999998"} 400
+go_sched_pauses_total_gc_seconds_bucket{le="+Inf"} 400
+go_sched_pauses_total_gc_seconds_sum 0.019727615999999996
+go_sched_pauses_total_gc_seconds_count 400
+# HELP go_sched_pauses_total_other_seconds Distribution of individual non-GC-related stop-the-world pause latencies. This is the time from deciding to stop the world until the world is started again. Some of this time is spent getting all threads to stop (measured directly in /sched/pauses/stopping/other:seconds). Bucket counts increase monotonically. Sourced from /sched/pauses/total/other:seconds.
+# TYPE go_sched_pauses_total_other_seconds histogram
+go_sched_pauses_total_other_seconds_bucket{le="6.399999999999999e-08"} 0
+go_sched_pauses_total_other_seconds_bucket{le="6.399999999999999e-07"} 0
+go_sched_pauses_total_other_seconds_bucket{le="7.167999999999999e-06"} 0
+go_sched_pauses_total_other_seconds_bucket{le="8.191999999999999e-05"} 0
+go_sched_pauses_total_other_seconds_bucket{le="0.0009175039999999999"} 0
+go_sched_pauses_total_other_seconds_bucket{le="0.010485759999999998"} 0
+go_sched_pauses_total_other_seconds_bucket{le="0.11744051199999998"} 0
+go_sched_pauses_total_other_seconds_bucket{le="+Inf"} 0
+go_sched_pauses_total_other_seconds_sum 0
+go_sched_pauses_total_other_seconds_count 0
+# HELP go_sched_threads_total_threads The current count of live threads that are owned by the Go runtime. Sourced from /sched/threads/total:threads.
+# TYPE go_sched_threads_total_threads gauge
+go_sched_threads_total_threads 16
+# HELP go_threads Number of OS threads created.
+# TYPE go_threads gauge
+go_threads 16
+# HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.
+# TYPE process_cpu_seconds_total counter
+process_cpu_seconds_total 33.25
+# HELP process_max_fds Maximum number of open file descriptors.
+# TYPE process_max_fds gauge
+process_max_fds 1.048576e+06
+# HELP process_network_receive_bytes_total Number of bytes received by the process over the network.
+# TYPE process_network_receive_bytes_total counter
+process_network_receive_bytes_total 2.1858399e+07
+# HELP process_network_transmit_bytes_total Number of bytes sent by the process over the network.
+# TYPE process_network_transmit_bytes_total counter
+process_network_transmit_bytes_total 7.7734942e+07
+# HELP process_open_fds Number of open file descriptors.
+# TYPE process_open_fds gauge
+process_open_fds 356
+# HELP process_resident_memory_bytes Resident memory size in bytes.
+# TYPE process_resident_memory_bytes gauge
+process_resident_memory_bytes 7.2134656e+07
+# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
+# TYPE process_start_time_seconds gauge
+process_start_time_seconds 1.79310971801e+09
+# HELP process_virtual_memory_bytes Virtual memory size in bytes.
+# TYPE process_virtual_memory_bytes gauge
+process_virtual_memory_bytes 1.377529856e+09
+# HELP process_virtual_memory_max_bytes Maximum amount of virtual memory available in bytes.
+# TYPE process_virtual_memory_max_bytes gauge
+process_virtual_memory_max_bytes 1.8446744073709552e+19
+# HELP promhttp_metric_handler_errors_total Total number of internal errors encountered by the promhttp metric handler.
+# TYPE promhttp_metric_handler_errors_total counter
+promhttp_metric_handler_errors_total{cause="encoding"} 0
+promhttp_metric_handler_errors_total{cause="gathering"} 0
