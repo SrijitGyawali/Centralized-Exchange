@@ -1,0 +1,94 @@
+Week 7 measurement-cost benchmarks, 2026-10-27
+Go 1.26.10, Windows 11 amd64, Intel i7-1165G7, machine otherwise idle.
+Measured code: commits b3c2d12 (before) and 2ff20fd (after, "perf(telemetry):
+resolve labelled metrics once"). Local measurements, not a promise.
+
+1. The clock (internal/clock). Now = QueryPerformanceCounter through syscall;
+   TimeNow = the standard library. time.Now is cheaper because it only reads
+   shared memory, but on this machine it advances every 578 us, so durations
+   below ~0.6 ms read as 0. The engine reads the clock 3-4 times per command.
+
+Command: go test -run '^$' -bench . -benchtime=2000000x -count=5 ./internal/clock
+goos: windows
+goarch: amd64
+pkg: github.com/SrijitGyawali/Centralized-Exchange/internal/clock
+cpu: 11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz
+BenchmarkNow-8       	 2000000	        85.75 ns/op
+BenchmarkNow-8       	 2000000	        86.91 ns/op
+BenchmarkNow-8       	 2000000	        96.81 ns/op
+BenchmarkNow-8       	 2000000	       104.6 ns/op
+BenchmarkNow-8       	 2000000	       107.5 ns/op
+BenchmarkTimeNow-8   	 2000000	         6.466 ns/op
+BenchmarkTimeNow-8   	 2000000	         6.713 ns/op
+BenchmarkTimeNow-8   	 2000000	         5.282 ns/op
+BenchmarkTimeNow-8   	 2000000	         5.050 ns/op
+BenchmarkTimeNow-8   	 2000000	         5.645 ns/op
+
+2. What metrics cost a command end to end (internal/telemetry at 2ff20fd,
+   BenchmarkObserverOverhead): one caller, an IOC order into an empty book,
+   no journal, engine with no observer vs the Prometheus observer (both read
+   the clock). Allocations are identical (17/op: the metrics add none). Time
+   per op is dominated by the goroutine handoff to the owner and back and
+   varies 4.4-13.6 us between runs, so a difference of ~0.2 us is not
+   measurable here.
+
+Command: go test -run '^$' -bench ObserverOverhead -benchmem -benchtime=200000x -count=5 ./internal/telemetry
+goos: windows
+goarch: amd64
+pkg: github.com/SrijitGyawali/Centralized-Exchange/internal/telemetry
+cpu: 11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz
+BenchmarkObserverOverhead/none-8         	  200000	      4404 ns/op	    1089 B/op	      17 allocs/op
+BenchmarkObserverOverhead/none-8         	  200000	      8240 ns/op	    1089 B/op	      17 allocs/op
+BenchmarkObserverOverhead/none-8         	  200000	     10533 ns/op	    1089 B/op	      17 allocs/op
+BenchmarkObserverOverhead/none-8         	  200000	     13607 ns/op	    1089 B/op	      17 allocs/op
+BenchmarkObserverOverhead/none-8         	  200000	      9294 ns/op	    1089 B/op	      17 allocs/op
+BenchmarkObserverOverhead/prometheus-8   	  200000	      9416 ns/op	    1089 B/op	      17 allocs/op
+BenchmarkObserverOverhead/prometheus-8   	  200000	      9382 ns/op	    1089 B/op	      17 allocs/op
+BenchmarkObserverOverhead/prometheus-8   	  200000	      9442 ns/op	    1089 B/op	      17 allocs/op
+BenchmarkObserverOverhead/prometheus-8   	  200000	      9356 ns/op	    1089 B/op	      17 allocs/op
+BenchmarkObserverOverhead/prometheus-8   	  200000	      8275 ns/op	    1089 B/op	      17 allocs/op
+
+3. The one optimization: the observer call the owner goroutine makes for
+   every command (BenchmarkApplied), before and after resolving labelled
+   children once ("before" = b3c2d12 plus the benchmark itself). Two test
+   binaries, run alternately 8 times each so
+   machine noise hits both equally; summarized with benchstat.
+
+Command (each binary): <telemetry.test> -test.run '^$' -test.bench 'Applied$' -test.benchmem -test.benchtime=2000000x
+goos: windows
+goarch: amd64
+pkg: github.com/SrijitGyawali/Centralized-Exchange/internal/telemetry
+cpu: 11th Gen Intel(R) Core(TM) i7-1165G7 @ 2.80GHz
+          │ before-b3c2d12.txt │    after-resolved-children.txt     │
+          │       sec/op       │   sec/op     vs base               │
+Applied-8        221.85n ± 21%   60.99n ± 7%  -72.51% (p=0.000 n=8)
+
+          │ before-b3c2d12.txt │  after-resolved-children.txt  │
+          │        B/op        │    B/op     vs base           │
+Applied-8           0.000 ± 0%   0.000 ± 0%  ~ (p=1.000 n=8) ¹
+¹ all samples are equal
+
+          │ before-b3c2d12.txt │  after-resolved-children.txt  │
+          │     allocs/op      │ allocs/op   vs base           │
+Applied-8           0.000 ± 0%   0.000 ± 0%  ~ (p=1.000 n=8) ¹
+¹ all samples are equal
+
+Raw runs, before (b3c2d12):
+BenchmarkApplied-8   	 2000000	       310.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkApplied-8   	 2000000	       206.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkApplied-8   	 2000000	       215.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkApplied-8   	 2000000	       232.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkApplied-8   	 2000000	       268.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkApplied-8   	 2000000	       217.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkApplied-8   	 2000000	       226.7 ns/op	       0 B/op	       0 allocs/op
+BenchmarkApplied-8   	 2000000	       209.3 ns/op	       0 B/op	       0 allocs/op
+
+Raw runs, after (2ff20fd):
+BenchmarkApplied-8   	 2000000	        59.74 ns/op	       0 B/op	       0 allocs/op
+BenchmarkApplied-8   	 2000000	        63.65 ns/op	       0 B/op	       0 allocs/op
+BenchmarkApplied-8   	 2000000	        57.34 ns/op	       0 B/op	       0 allocs/op
+BenchmarkApplied-8   	 2000000	        62.25 ns/op	       0 B/op	       0 allocs/op
+BenchmarkApplied-8   	 2000000	        74.09 ns/op	       0 B/op	       0 allocs/op
+BenchmarkApplied-8   	 2000000	        56.94 ns/op	       0 B/op	       0 allocs/op
+BenchmarkApplied-8   	 2000000	        59.14 ns/op	       0 B/op	       0 allocs/op
+BenchmarkApplied-8   	 2000000	        64.18 ns/op	       0 B/op	       0 allocs/op
