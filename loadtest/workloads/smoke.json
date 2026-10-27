@@ -1,0 +1,16 @@
+{
+  "name": "smoke",
+  "description": "A few seconds of light trading. Used by CI and the loadgen tests to prove the tool and the server's metrics work end to end; its numbers mean nothing.",
+  "seed": 7,
+  "users": 5,
+  "mix": {"rest": 45, "cross": 35, "cancel": 20},
+  "mid_price": 60000,
+  "spread_ticks": 50,
+  "max_qty_lots": 50,
+  "fund_usdt": 500000,
+  "fund_btc": 50,
+  "warmup": "1s",
+  "stages": [{"rate": 50, "duration": "3s"}],
+  "max_in_flight": 100,
+  "timeout": "5s"
+}
