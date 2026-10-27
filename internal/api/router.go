@@ -15,7 +15,7 @@ type ReadinessFunc func() error
 // It uses the standard library's http.ServeMux. Since Go 1.22, patterns can
 // include the method and path wildcards ("GET /v1/orders/{id}"), which covers
 // everything this service needs without a third-party router.
-func NewRouter(ready ReadinessFunc) http.Handler {
+func NewRouter(ready ReadinessFunc) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", handleHealthz)

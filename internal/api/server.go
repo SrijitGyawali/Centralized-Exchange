@@ -41,8 +41,38 @@ type server struct {
 }
 type principalKey struct{}
 
+// Server is the HTTP API: health checks plus the authenticated /v1 routes.
+// It is an http.Handler, and it can also name the route a request would
+// take (Route), which metrics use as a label.
+type Server struct {
+	handler http.Handler
+	v1      *http.ServeMux // the /v1 routes
+	health  *http.ServeMux // /healthz and /readyz
+}
+
+// ServeHTTP implements http.Handler.
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) { s.handler.ServeHTTP(w, r) }
+
+// Route returns the pattern r would be served by, such as
+// "GET /v1/orders/{id}", or "" when no route matches (a 404 or 405).
+//
+// Metrics label requests with the PATTERN, never the raw path: every order
+// ID would otherwise become its own time series, and a client requesting
+// random paths could create unbounded labels. ServeMux.Handler looks the
+// route up without serving it.
+func (s *Server) Route(r *http.Request) string {
+	mux := s.health
+	if isV1(r.URL.Path) {
+		mux = s.v1
+	}
+	_, pattern := mux.Handler(r)
+	return pattern
+}
+
+func isV1(path string) bool { return path == "/v1" || strings.HasPrefix(path, "/v1/") }
+
 // NewServer builds the authenticated API. The engine must be running and remains caller-owned.
-func NewServer(e *engine.Engine, ready ReadinessFunc, cfg Config) http.Handler {
+func NewServer(e *engine.Engine, ready ReadinessFunc, cfg Config) *Server {
 	if cfg.RatePerSecond <= 0 || math.IsNaN(cfg.RatePerSecond) || math.IsInf(cfg.RatePerSecond, 0) {
 		cfg.RatePerSecond = 20
 	}
@@ -79,9 +109,9 @@ func NewServer(e *engine.Engine, ready ReadinessFunc, cfg Config) http.Handler {
 		ready = func() error { return nil }
 	}
 	health := NewRouter(ready)
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
-		if r.URL.Path != "/v1" && !strings.HasPrefix(r.URL.Path, "/v1/") {
+		if !isV1(r.URL.Path) {
 			health.ServeHTTP(w, r)
 			return
 		}
@@ -106,6 +136,7 @@ func NewServer(e *engine.Engine, ready ReadinessFunc, cfg Config) http.Handler {
 		defer done()
 		mux.ServeHTTP(w, r.WithContext(ctx))
 	})
+	return &Server{handler: handler, v1: mux, health: health}
 }
 func caller(r *http.Request) Principal { return r.Context().Value(principalKey{}).(Principal) }
 func (s *server) allow(u domain.UserID) int {
