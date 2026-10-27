@@ -8,9 +8,13 @@
 //  2. recover: open the journal in DataDir, replay it into a fresh state,
 //     check every invariant, start the engine (node.Open)
 //  3. (week 6) start projector and market data
-//  4. serve HTTP; /readyz answers 200 once recovery has succeeded
-//  5. on SIGINT/SIGTERM shut down in reverse order: stop HTTP, then stop
+//  4. (week 7) metrics everywhere, served with pprof on a private admin port
+//  5. serve HTTP; /readyz answers 200 once recovery has succeeded
+//  6. on SIGINT/SIGTERM shut down in reverse order: stop HTTP, then stop
 //     admitting, drain the engine and close the journal
+//
+// `cexd healthcheck` instead asks a running server's /readyz and exits 0 or
+// 1 (for the container HEALTHCHECK; see healthcheck.go).
 package main
 
 import (
@@ -30,11 +34,13 @@ import (
 
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/api"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/config"
+	"github.com/SrijitGyawali/Centralized-Exchange/internal/domain"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/engine"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/journal"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/marketdata"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/node"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/projector"
+	"github.com/SrijitGyawali/Centralized-Exchange/internal/telemetry"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/webui"
 )
 
@@ -47,6 +53,13 @@ var version = "dev"
 // instead of calling os.Exit or log.Fatal. Deferred cleanup therefore always
 // runs, and tests can call run directly.
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "healthcheck" {
+		if err := healthcheck(os.Getenv); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if err := run(context.Background(), os.Getenv, os.Stdout); err != nil {
 		fmt.Fprintf(os.Stderr, "cexd: %v\n", err)
 		os.Exit(1)
@@ -73,12 +86,18 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 		"data_dir", cfg.DataDir,
 	)
 
+	// Metrics (week 7) exist before recovery, so the engine and the journal
+	// report from their very first command.
+	metrics := telemetry.New(version)
+
 	// Recovery: replay the journal into a fresh state and start the engine.
 	// If the journal is corrupt or the recovered state breaks an invariant,
 	// the server refuses to start rather than trade on a wrong state.
 	ecfg := engine.DefaultConfig()
 	ecfg.BatchSize = cfg.BatchSize
-	nd, err := node.Open(node.Config{Dir: cfg.DataDir, Engine: ecfg})
+	ecfg.QueueSize = cfg.QueueSize
+	ecfg.Observer = metrics.Engine()
+	nd, err := node.Open(node.Config{Dir: cfg.DataDir, Engine: ecfg, JournalOnSync: metrics.JournalOnSync})
 	if err != nil {
 		return fmt.Errorf("recovery: %w", err)
 	}
@@ -90,7 +109,9 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 			logger.Error("closing the node", "err", err)
 			return
 		}
-		logger.Info("engine drained and journal closed")
+		// After the drain every applied command is durable, so this one Seq
+		// is both the applied and the durable sequence at exit.
+		logger.Info("engine drained and journal closed", "applied_seq", nd.Engine.Snapshot().Seq)
 	}()
 	logger.Info("recovered",
 		"commands", nd.Recovery.Commands,
@@ -99,6 +120,10 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 		"digest", fmt.Sprintf("%x", nd.Recovery.Digest),
 		"took", nd.Recovery.Took.String(),
 	)
+	metrics.RecordRecovery(nd.Recovery)
+	metrics.WatchEngine(nd.Engine)
+	metrics.WatchJournalFile(filepath.Join(cfg.DataDir, journal.FileName))
+	appliedSeq := func() domain.Seq { return nd.Engine.Snapshot().Seq }
 
 	// The SQL read model (week 6) is optional. When enabled, a projector
 	// goroutine follows the journal file and writes PostgreSQL. It never
@@ -106,6 +131,11 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 	// only makes history stale (ADR-0009). The URL holds a password, so it is
 	// never logged.
 	var projection api.ProjectionStatus
+	// watched must stay a NIL INTERFACE when the read model is off. Assigning
+	// a nil *projector.Status to it would make a non-nil interface holding a
+	// nil pointer (the "typed nil" trap), and WatchProjection's nil check
+	// would pass, then crash on the first scrape.
+	var watched telemetry.Projection
 	if cfg.DatabaseURL != "" {
 		pool, err := pgxpool.New(context.Background(), cfg.DatabaseURL) // connects lazily; never blocks startup
 		if err != nil {
@@ -130,8 +160,10 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 			logger.Info("projector stopped", "projected_seq", status.ProjectedSeq())
 		}()
 		projection = status
+		watched = status
 		logger.Info("projector enabled")
 	}
+	metrics.WatchProjection(watched, appliedSeq)
 
 	tokens := make(map[string]api.Principal, len(cfg.Tokens))
 	for token, identity := range cfg.Tokens {
@@ -141,6 +173,7 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 	// snapshot at a bounded rate and fans it out over WebSocket. It never
 	// touches the engine goroutine, so no viewer can slow matching down.
 	hub := marketdata.New(nd.Engine.Snapshot, marketdata.Config{})
+	metrics.WatchHub(hub.Stats)
 	hubCtx, stopHub := context.WithCancel(context.Background())
 	hubDone := make(chan struct{})
 	go func() { defer close(hubDone); hub.Run(hubCtx) }()
@@ -150,18 +183,36 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 	//   /stream/book  public WebSocket feed (no token, no private data)
 	//   /, /ui/...    the web client (static files)
 	//   everything else: health checks and the authenticated /v1 API
+	apiServer := api.NewServer(nd.Engine, nd.Ready, api.Config{
+		Tokens: tokens, RatePerSecond: cfg.RatePerSecond, Burst: cfg.RateBurst,
+		RequestTimeout: cfg.RequestTimeout,
+		Projection:     projection,
+	})
 	routes := http.NewServeMux()
 	routes.Handle("GET /stream/book", hub.Handler())
 	routes.Handle("GET /{$}", webui.Handler()) // {$}: exactly "/", not every path
 	routes.Handle("GET /ui/", webui.Handler())
-	routes.Handle("/", api.NewServer(nd.Engine, nd.Ready, api.Config{
-		Tokens: tokens, RatePerSecond: cfg.RatePerSecond, Burst: cfg.RateBurst,
-		RequestTimeout: cfg.RequestTimeout,
-		Projection:     projection,
-	}))
+	routes.Handle("/", apiServer)
+
+	// Every request is timed by route, except the stream: a WebSocket lives
+	// for hours, and the hub has its own metrics. The API names its own
+	// routes, because the outer mux only sees "/" for all of them.
+	routeOf := func(r *http.Request) string {
+		_, pattern := routes.Handler(r)
+		switch pattern {
+		case "GET /stream/book":
+			return "" // not timed
+		case "/":
+			pattern = apiServer.Route(r)
+		}
+		if pattern == "" {
+			return telemetry.RouteUnmatched
+		}
+		return pattern
+	}
 
 	srv := &http.Server{
-		Handler: routes,
+		Handler: metrics.InstrumentHTTP(routes, routeOf),
 		// Timeouts protect against slow or malicious clients holding
 		// connections open forever. The zero value means "no timeout",
 		// which is a classic production bug.
@@ -172,13 +223,29 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 		ErrorLog:          slog.NewLogLogger(logger.Handler(), slog.LevelError),
 	}
 
-	// Listen synchronously so a bad address or busy port fails startup
-	// immediately with a clear error, before we report "listening".
 	// Shutdown does NOT wait for or close hijacked connections (WebSockets), so
 	// stop the hub as shutdown begins: every stream gets a close frame saying
 	// "server shutting down" instead of hanging until the process exits.
 	srv.RegisterOnShutdown(stopHub)
 
+	// The private admin listener: /metrics and /debug/pprof, started before
+	// the public one so the first scrape already sees a running server. Its
+	// Close is deferred, so it runs when run returns, after the public server
+	// has shut down; it has nothing to drain, so Close (not Shutdown) is fine.
+	if cfg.AdminAddr != "" {
+		adminLn, err := net.Listen("tcp", cfg.AdminAddr)
+		if err != nil {
+			return fmt.Errorf("admin listen on %s: %w", cfg.AdminAddr, err)
+		}
+		admin := adminServer(adminHandler(metrics))
+		admin.ErrorLog = srv.ErrorLog
+		go func() { _ = admin.Serve(adminLn) }()
+		defer admin.Close()
+		logger.Info("admin listening", "addr", adminLn.Addr().String())
+	}
+
+	// Listen synchronously so a bad address or busy port fails startup
+	// immediately with a clear error, before we report "listening".
 	ln, err := net.Listen("tcp", cfg.HTTPAddr)
 	if err != nil {
 		return fmt.Errorf("listen on %s: %w", cfg.HTTPAddr, err)
