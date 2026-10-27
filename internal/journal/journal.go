@@ -7,7 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
+	"github.com/SrijitGyawali/Centralized-Exchange/internal/clock"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/command"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/domain"
 )
@@ -37,6 +39,12 @@ type Hooks struct {
 // Options configures Open.
 type Options struct {
 	Hooks Hooks
+	// OnSync, if set, is told about every successful append (week 7
+	// metrics): how many bytes were written, and how long the write and the
+	// fsync each took. Splitting the two shows where durable time goes:
+	// write only copies into the OS cache; fsync waits for the device.
+	// It runs on the appending goroutine and must be fast.
+	OnSync func(bytes int, write, sync time.Duration)
 }
 
 // Journal appends commands durably to one file. It is used by the engine's
@@ -50,6 +58,7 @@ type Journal struct {
 	nextSeq domain.Seq
 	err     error // sticky: set by the first write or sync failure
 	hooks   Hooks
+	onSync  func(bytes int, write, sync time.Duration)
 	buf     []byte // reused for every frame: no allocation per append
 }
 
@@ -96,7 +105,7 @@ func Open(path string, opts Options, apply func(command.Command) error) (*Journa
 	if err := syncDir(filepath.Dir(path)); err != nil {
 		return fail(res, fmt.Errorf("journal: syncing directory: %w", err))
 	}
-	return &Journal{f: f, nextSeq: res.LastSeq + 1, hooks: opts.Hooks}, res, nil
+	return &Journal{f: f, nextSeq: res.LastSeq + 1, hooks: opts.Hooks, onSync: opts.OnSync}, res, nil
 }
 
 // Append writes c as one frame and fsyncs it. When it returns nil, the
@@ -136,6 +145,7 @@ func (j *Journal) AppendBatch(cmds []command.Command) error {
 		}
 	}
 	j.buf = buf
+	start := clock.Now()
 	if hooked {
 		start := 0
 		for i, c := range cmds {
@@ -158,8 +168,12 @@ func (j *Journal) AppendBatch(cmds []command.Command) error {
 	} else if err := j.write(buf); err != nil {
 		return err
 	}
+	written := clock.Now()
 	if err := j.f.Sync(); err != nil {
 		return j.fail(err)
+	}
+	if j.onSync != nil {
+		j.onSync(len(buf), written.Sub(start), clock.Since(written))
 	}
 	for _, c := range cmds {
 		call(j.hooks.AfterSync, c.Seq)
