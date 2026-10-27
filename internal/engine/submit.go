@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/SrijitGyawali/Centralized-Exchange/internal/clock"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/command"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/domain"
 )
@@ -83,6 +84,14 @@ func lastChance(reply <-chan command.Result, cause error) (command.Result, error
 // can hold the read lock together; the send itself never blocks (select with
 // default), so holding the lock across it cannot deadlock.
 func (e *Engine) enqueue(req request) error {
+	err := e.tryEnqueue(req)
+	if err != nil {
+		e.cfg.Observer.Refused(err) // outside the lock: an observer can never delay Close
+	}
+	return err
+}
+
+func (e *Engine) tryEnqueue(req request) error {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	if e.closed {
@@ -93,6 +102,9 @@ func (e *Engine) enqueue(req request) error {
 		return ErrHalted
 	default:
 	}
+	// Stamped just before the send, so QueueWait measures only time spent
+	// IN the queue, not time spent waiting for this lock.
+	req.admitted = clock.Now()
 	select {
 	case e.intake <- req:
 		return nil
