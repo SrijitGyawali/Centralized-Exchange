@@ -277,7 +277,7 @@ func (g *gate) start(bin, dir, addr string) error {
 	}
 	g.log = log
 	g.cmd = exec.Command(bin)
-	override := map[string]string{"CEX_HTTP_ADDR": addr, "CEX_DATA_DIR": filepath.Join(dir, "wal"), "CEX_API_TOKENS": `[{"token":"` + admin + `","user_id":"1","admin":true},{"token":"` + seller + `","user_id":"2","admin":false}]`, "CEX_RATE_PER_SECOND": "1000", "CEX_RATE_BURST": "1000", "CEX_BATCH_SIZE": "64"}
+	override := map[string]string{"CEX_HTTP_ADDR": addr, "CEX_ADMIN_ADDR": "127.0.0.1:0", "CEX_DATA_DIR": filepath.Join(dir, "wal"), "CEX_API_TOKENS": `[{"token":"` + admin + `","user_id":"1","admin":true},{"token":"` + seller + `","user_id":"2","admin":false}]`, "CEX_RATE_PER_SECOND": "1000", "CEX_RATE_BURST": "1000", "CEX_BATCH_SIZE": "64"}
 	for _, env := range os.Environ() {
 		key, _, _ := strings.Cut(env, "=")
 		if !strings.HasPrefix(strings.ToUpper(key), "CEX_") {
