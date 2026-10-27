@@ -1,0 +1,89 @@
+# Alert rules (week 7). Locally they only show up on Prometheus's Alerts page
+# (http://localhost:9090/alerts); there is no Alertmanager sending pages. They
+# are written as a production setup would need them, and each one names the
+# operator action in its annotation.
+#
+# The thresholds are first guesses, to be tuned from the load-test baseline
+# (docs/PERFORMANCE.md), not promises.
+groups:
+  - name: cex-trading
+    rules:
+      - alert: CexEngineHalted
+        expr: cex_engine_halted == 1
+        labels: {severity: critical}
+        annotations:
+          summary: The engine stopped trading after a storage or apply failure.
+          action: Trading stays halted until a restart. Read the logs for the cause (disk full, fsync error, corrupt journal) BEFORE restarting; never delete the journal.
+
+      - alert: CexScrapeDown
+        expr: up{job="cexd"} == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: Prometheus cannot reach cexd's admin port.
+          action: Check that the process is running and CEX_ADMIN_ADDR is reachable from Prometheus.
+
+      - alert: CexQueueNearlyFull
+        expr: cex_engine_queue_length / cex_engine_queue_capacity > 0.8
+        for: 1m
+        labels: {severity: warning}
+        annotations:
+          summary: The intake queue has been over 80% full for a minute; the engine is saturated.
+          action: Requests will soon be refused with 503. Check fsync latency and CPU on the engine dashboard.
+
+      - alert: CexShedding
+        expr: sum(rate(cex_engine_refused_total{reason="overloaded"}[1m])) > 0
+        for: 1m
+        labels: {severity: warning}
+        annotations:
+          summary: The engine is refusing requests because its queue is full.
+          action: Load exceeds capacity. Clients get 503 (safe to retry with the same Idempotency-Key).
+
+      - alert: CexServerErrors
+        expr: |
+          sum(rate(cex_http_request_duration_seconds_count{code=~"5.."}[5m]))
+            / sum(rate(cex_http_request_duration_seconds_count[5m])) > 0.01
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: More than 1% of HTTP responses are 5xx.
+          action: 503 = overloaded or halted, 504 = engine too slow for the request timeout. See the HTTP dashboard by route.
+
+      - alert: CexOrderLatencyBudget
+        # The plan's initial hypothesis: p99 < 50 ms for placing orders.
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le) (rate(cex_http_request_duration_seconds_bucket{route="POST /v1/orders"}[5m]))) > 0.05
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: p99 order latency is above the 50 ms budget.
+          action: Compare queue wait, durable and apply time on the engine dashboard to find which part grew.
+
+  - name: cex-readmodel
+    rules:
+      - alert: CexProjectionUnhealthy
+        expr: cex_projection_enabled == 1 and cex_projection_healthy == 0
+        for: 1m
+        labels: {severity: warning}
+        annotations:
+          summary: The projector cannot write to PostgreSQL. Trading is unaffected; history is going stale.
+          action: Check PostgreSQL. The projector retries on its own and catches up exactly once from its checkpoint.
+
+      - alert: CexProjectionLagHigh
+        expr: cex_projection_lag_commands > 10000
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: The SQL read model is more than 10,000 commands behind.
+          action: History queries are stale. If lag keeps growing while healthy, the database is too slow for the load.
+
+  - name: cex-marketdata
+    rules:
+      - alert: CexManySlowConsumers
+        expr: rate(cex_marketdata_slow_drops_total[5m]) > 1
+        for: 10m
+        labels: {severity: info}
+        annotations:
+          summary: More than one WebSocket viewer per second is being dropped as too slow.
+          action: Usually client-side networks. If it is everyone, check the server's outgoing bandwidth.
