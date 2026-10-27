@@ -1,0 +1,70 @@
+{
+  "uid": "cex-http",
+  "title": "CEX · 2 · HTTP API",
+  "description": "What clients experience at the server: rate, latency and status by route. Routes are patterns (GET /v1/orders/{id}), never raw paths.",
+  "tags": ["cex"],
+  "schemaVersion": 39,
+  "editable": false,
+  "refresh": "5s",
+  "time": {"from": "now-15m", "to": "now"},
+  "panels": [
+    {
+      "type": "stat", "title": "Requests / s", "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "reqps"}},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"refId": "A", "expr": "sum(rate(cex_http_request_duration_seconds_count[30s]))"}]
+    },
+    {
+      "type": "stat", "title": "5xx ratio", "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "description": "503 = overloaded or halted, 504 = engine slower than the request timeout (outcome unknown: retry the same key).",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "percentunit", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 0.001}, {"color": "red", "value": 0.01}]}}},
+      "options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"refId": "A", "expr": "(sum(rate(cex_http_request_duration_seconds_count{code=~\"5..\"}[1m])) or vector(0)) / sum(rate(cex_http_request_duration_seconds_count[1m]))"}]
+    },
+    {
+      "type": "stat", "title": "Order p99 (answered)", "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "description": "POST /v1/orders, answered responses only. The initial budget hypothesis is 50 ms.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 0.05}]}}},
+      "options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"refId": "A", "expr": "histogram_quantile(0.99, sum by (le) (rate(cex_http_request_duration_seconds_bucket{route=\"POST /v1/orders\",code=~\"200|422\"}[1m])))"}]
+    },
+    {
+      "type": "stat", "title": "In flight", "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"refId": "A", "expr": "cex_http_requests_in_flight"}]
+    },
+    {
+      "type": "timeseries", "title": "Requests / s by route", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "reqps"}},
+      "targets": [{"refId": "A", "expr": "sum by (route) (rate(cex_http_request_duration_seconds_count[30s])) > 0", "legendFormat": "{{route}}"}]
+    },
+    {
+      "type": "timeseries", "title": "Responses / s by status code", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "description": "200 accepted, 404 unknown order, 409 key conflict, 422 business rejection, 429 rate limited, 503 overloaded, 504 timed out.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "reqps", "custom": {"stacking": {"mode": "normal"}, "fillOpacity": 30}}},
+      "targets": [{"refId": "A", "expr": "sum by (code) (rate(cex_http_request_duration_seconds_count[30s])) > 0", "legendFormat": "{{code}}"}]
+    },
+    {
+      "type": "timeseries", "title": "Order latency (answered): p50 / p99", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}},
+      "targets": [
+        {"refId": "A", "expr": "histogram_quantile(0.5, sum by (le, route) (rate(cex_http_request_duration_seconds_bucket{route=~\"POST /v1/orders|DELETE /v1/orders/.*\",code=~\"200|404|409|422\"}[30s])))", "legendFormat": "p50 {{route}}"},
+        {"refId": "B", "expr": "histogram_quantile(0.99, sum by (le, route) (rate(cex_http_request_duration_seconds_bucket{route=~\"POST /v1/orders|DELETE /v1/orders/.*\",code=~\"200|404|409|422\"}[30s])))", "legendFormat": "p99 {{route}}"}
+      ]
+    },
+    {
+      "type": "timeseries", "title": "p99 latency by route (all codes)", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "description": "Includes fast refusals (429, 503), which can make an overloaded route look quick: compare with the answered-only panel.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}},
+      "targets": [{"refId": "A", "expr": "histogram_quantile(0.99, sum by (le, route) (rate(cex_http_request_duration_seconds_bucket[30s])))", "legendFormat": "{{route}}"}]
+    }
+  ]
+}
