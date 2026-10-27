@@ -1,0 +1,94 @@
+{
+  "uid": "cex-runtime",
+  "title": "CEX · 4 · Go runtime, disk and recovery",
+  "description": "The machine underneath: CPU, memory, garbage collection, goroutines, scheduler latency, fsync, journal growth, and what the last startup had to replay.",
+  "tags": ["cex"],
+  "schemaVersion": 39,
+  "editable": false,
+  "refresh": "5s",
+  "time": {"from": "now-15m", "to": "now"},
+  "panels": [
+    {
+      "type": "stat", "title": "Last recovery took", "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "description": "Journal replay at startup. Grows with the journal: the number that decides when Tier 2 snapshots are needed.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"refId": "A", "expr": "cex_recovery_duration_seconds"}]
+    },
+    {
+      "type": "stat", "title": "Commands replayed at startup", "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"refId": "A", "expr": "cex_recovery_commands"}]
+    },
+    {
+      "type": "stat", "title": "Journal size", "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "bytes"}},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"refId": "A", "expr": "cex_journal_file_bytes"}]
+    },
+    {
+      "type": "stat", "title": "Build", "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "/^version$/"}, "textMode": "value"},
+      "targets": [{"refId": "A", "expr": "cex_build_info", "format": "table", "instant": true}]
+    },
+    {
+      "type": "timeseries", "title": "CPU (cores used)", "gridPos": {"h": 8, "w": 8, "x": 0, "y": 4},
+      "description": "The engine is ONE goroutine: it can use at most one core however many the machine has.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "rate(process_cpu_seconds_total{job=\"cexd\"}[30s])", "legendFormat": "cexd"}]
+    },
+    {
+      "type": "timeseries", "title": "Memory", "gridPos": {"h": 8, "w": 8, "x": 8, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "bytes"}},
+      "targets": [
+        {"refId": "A", "expr": "process_resident_memory_bytes{job=\"cexd\"}", "legendFormat": "resident (RSS)"},
+        {"refId": "B", "expr": "go_memstats_heap_inuse_bytes{job=\"cexd\"}", "legendFormat": "Go heap in use"}
+      ]
+    },
+    {
+      "type": "timeseries", "title": "Goroutines", "gridPos": {"h": 8, "w": 8, "x": 16, "y": 4},
+      "description": "One per open connection plus a fixed few. A climb that never comes down is a leak.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "go_goroutines{job=\"cexd\"}", "legendFormat": "goroutines"}]
+    },
+    {
+      "type": "timeseries", "title": "GC: CPU share and longest pause", "gridPos": {"h": 8, "w": 8, "x": 0, "y": 12},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {}, "overrides": [{"matcher": {"id": "byName", "options": "max pause"}, "properties": [{"id": "unit", "value": "s"}]}, {"matcher": {"id": "byName", "options": "GC pause time / s"}, "properties": [{"id": "unit", "value": "percentunit"}]}]},
+      "targets": [
+        {"refId": "A", "expr": "rate(go_gc_duration_seconds_sum{job=\"cexd\"}[1m])", "legendFormat": "GC pause time / s"},
+        {"refId": "B", "expr": "go_gc_duration_seconds{job=\"cexd\",quantile=\"1\"}", "legendFormat": "max pause"}
+      ]
+    },
+    {
+      "type": "timeseries", "title": "Scheduler latency p99", "gridPos": {"h": 8, "w": 8, "x": 8, "y": 12},
+      "description": "How long runnable goroutines wait for a CPU. High values mean the process is CPU-starved, so every measured latency includes waiting to run.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}},
+      "targets": [{"refId": "A", "expr": "histogram_quantile(0.99, sum by (le) (rate(go_sched_latencies_seconds_bucket{job=\"cexd\"}[30s])))", "legendFormat": "p99"}]
+    },
+    {
+      "type": "timeseries", "title": "Journal: write and fsync (p50 / p99)", "gridPos": {"h": 8, "w": 8, "x": 16, "y": 12},
+      "description": "Write only copies into the OS cache; fsync waits for the device. Durability is paid in fsync.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}},
+      "targets": [
+        {"refId": "A", "expr": "histogram_quantile(0.5, sum by (le) (rate(cex_journal_fsync_seconds_bucket[30s])))", "legendFormat": "fsync p50"},
+        {"refId": "B", "expr": "histogram_quantile(0.99, sum by (le) (rate(cex_journal_fsync_seconds_bucket[30s])))", "legendFormat": "fsync p99"},
+        {"refId": "C", "expr": "histogram_quantile(0.99, sum by (le) (rate(cex_journal_write_seconds_bucket[30s])))", "legendFormat": "write p99"}
+      ]
+    },
+    {
+      "type": "timeseries", "title": "Journal growth", "gridPos": {"h": 8, "w": 24, "x": 0, "y": 20},
+      "description": "Tier 1 keeps one growing file. Disk growth per second at the current load; plan capacity from this.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "Bps"}},
+      "targets": [{"refId": "A", "expr": "rate(cex_journal_appended_bytes_total[1m])", "legendFormat": "appended bytes / s"}]
+    }
+  ]
+}
