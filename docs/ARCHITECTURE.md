@@ -6,7 +6,7 @@ directory or package owns each responsibility. It explains the *why* behind
 the repository layout. Detailed decisions live in [ADRs](adr/), and the full
 roadmap is in the [master plan](plan/CEX_Go_Guided_Master_Plan.md).
 
-> Status: weeks 1-6 implemented (SQL read model, WebSocket feed, web UI). Each section notes the week it was built.
+> Status: weeks 1-7 implemented (week 7: Prometheus metrics, private admin port with pprof, load generator, Docker Compose stack, Grafana dashboards). Each section notes the week it was built.
 
 ---
 
@@ -85,9 +85,12 @@ Key ideas:
 | Config | `internal/config` | Reads environment variables into a typed, validated `Config` | 1 |
 | Server binary | `cmd/cexd` | Composition root: builds every component, wires them, runs, shuts down gracefully | 1 |
 | Replay CLI | `cmd/replay` | Offline replay to a chosen sequence, state digest, "explain order" | 4, 8 |
+| Telemetry | `internal/telemetry` | The ONLY importer of the Prometheus client. Turns the engine Observer, journal OnSync, hub Stats, projector Status and API route names into metrics; HTTP middleware; served on the private admin port. See ADR-0011 | 7 |
+| Clock | `internal/clock` | High-resolution monotonic clock for measuring (QueryPerformanceCounter on Windows, where `time.Now` ticks every ~0.5 ms). Never used by the state machine | 7 |
+| Load generator | `cmd/loadgen` | Open-model workloads from versioned JSON, exact client percentiles, per-stage server attribution from `/metrics`, raw results. See ADR-0012 | 7 |
 
-Not built yet, added when needed: `internal/telemetry` (Prometheus metrics,
-week 7), `migrations/` (SQL schema, week 6), `web/` (frontend, week 6).
+SQL migrations live inside `internal/projector/migrations` and the web client
+inside `internal/webui/static`, both compiled into the binary with `go:embed`.
 
 ---
 
@@ -145,6 +148,7 @@ Planned PostgreSQL tables (week 6): `orders`, `trades`, `ledger_journals`,
 .
 ├── cmd/                      # One sub-directory per binary. Each has a main package.
 │   ├── cexd/                 #   The exchange server (composition root only, no business logic)
+│   ├── loadgen/              #   Open-model load generator (week 7)
 │   └── replay/               #   Offline replay / inspector CLI
 ├── internal/                 # Private code. The Go toolchain forbids imports from other modules.
 │   ├── domain/               #   Pure: units, checked math, enums, IDs
@@ -158,10 +162,12 @@ Planned PostgreSQL tables (week 6): `orders`, `trades`, `ledger_journals`,
 │   ├── marketdata/           #   I/O:  WebSocket feeds
 │   ├── webui/                #   The embedded web client (static files)
 │   ├── projector/            #   I/O:  PostgreSQL read model
+│   ├── telemetry/            #   Prometheus metrics (the only importer of the client)
+│   ├── clock/                #   High-resolution clock for measuring durations
 │   └── config/               #   Startup configuration
 ├── tests/                    # Cross-package tests: crash harness, end-to-end, recovery
-├── loadtest/                 # k6 / Go workload definitions (week 7)
-├── deploy/                   # Dockerfile, docker-compose, env templates (week 7)
+├── loadtest/                 # Versioned workloads (JSON) and the outage drill (week 7)
+├── deploy/                   # Dockerfile, docker-compose, Prometheus, Grafana (week 7)
 ├── labs/                     # Small Go runtime experiments (scheduler, GC, escape analysis…)
 ├── evidence/                 # Benchmark output, profiles, crash reports, demo recordings
 ├── track/                    # Day-by-day notes (track/2026-10-01/…): what, why, how
@@ -169,7 +175,7 @@ Planned PostgreSQL tables (week 6): `orders`, `trades`, `ledger_journals`,
 │   ├── ARCHITECTURE.md       #   This file
 │   ├── adr/                  #   Architecture Decision Records, one decision per file
 │   └── plan/                 #   The master plan
-├── .github/workflows/        # CI: fmt, vet, build, race-enabled tests
+├── .github/workflows/        # CI: fmt, vet, race tests, integration, govulncheck, image + promtool
 ├── Makefile                  # Short aliases for the commands you run daily
 └── go.mod                    # Module path + pinned Go version
 ```
@@ -208,6 +214,9 @@ Planned PostgreSQL tables (week 6): `orders`, `trades`, `ledger_journals`,
   import only the standard library and each other. They never import
   `journal`, `api`, `engine`, `database/sql`, `net/http`, `os` or `time.Now`.
 - I/O packages depend on the core, never the other way round.
+- `internal/telemetry` sits at the edge with `cmd/cexd`: it imports engine,
+  node, marketdata and the Prometheus client; nothing imports it except
+  `cmd/*`. Producers report through hooks they declare themselves.
 - Cycles are compile errors in Go, so a bad dependency shows up immediately.
 
 ---
@@ -244,6 +253,19 @@ AppendBatch validates all frames, writes once and syncs once before Apply or
 reply. Failures halt the engine; recovery can replay a complete batch prefix.
 The WAL frame format is unchanged. See [ADR-0008](adr/0008-opportunistic-group-commit.md).
 
+### Operator endpoints (private admin port, week 7)
+
+Served on `CEX_ADMIN_ADDR` (default `127.0.0.1:6060`, `off` disables), never
+on the public port. See [ADR-0011](adr/0011-metrics-and-private-admin-port.md).
+
+| Method & path | Purpose |
+|---|---|
+| `GET /metrics` | Prometheus text format: HTTP, engine (queue wait, durable, apply, total, outcomes, refusals, queue length), journal (write, fsync, bytes, size), recovery, projection, market data, Go runtime, process |
+| `GET /debug/pprof/` | Profiles: `profile` (CPU), `heap`, `allocs`, `goroutine`, `block`, `mutex`, `trace` |
+
+`cexd healthcheck` (a subcommand, not an endpoint) asks `/readyz` from inside
+the container and exits 0 or 1.
+
 ---
 
 ## 8. Build order
@@ -260,5 +282,5 @@ replication.
 | 4 | `journal`, replay on startup, `cmd/replay`, crash harness in `tests/` |
 | 5 | `api` endpoints, auth, group commit |
 | 6 | `projector` + PostgreSQL, `marketdata` WebSocket, minimal UI |
-| 7 | metrics, `loadtest/`, `deploy/` compose, profiling into `evidence/` |
+| 7 | ✅ `telemetry`, `clock`, `cmd/loadgen`, `loadtest/`, `deploy/` (Compose, Prometheus, Grafana), profiles and load results in `evidence/` |
 | 8 | inspector polish, docs, v0.1 tag |
