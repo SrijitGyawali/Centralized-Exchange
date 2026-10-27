@@ -26,9 +26,15 @@ should be revisited. It answers one recurring question:
 | 8 | Test dependencies | **testcontainers-go** vs mocks | Real Postgres via testcontainers; hand fakes only for failure injection | ✅ **Use testcontainers** (week 6) | n/a |
 | 9 | Task runner | **Taskfile** (go-task) | `Makefile` | Makefile | Makefile gets painful (~week 6–7) |
 | 10 | Authentication | **Clerk** | Seeded tokens (Tier 1) behind an `Authenticator` interface | Seeded tokens now | Frontend login (week 6) / Tier 2 hardening |
+| 11 | Metrics | **prometheus/client_golang** (vs OpenTelemetry SDK, hand-written text format) | client_golang, imported ONLY by `internal/telemetry` | ✅ **Use** (week 7, ADR-0011) | Several services need one vendor-neutral pipeline (then OpenTelemetry) |
+| 12 | Load testing | **k6** (vs `go test -bench`, a Go generator) | `cmd/loadgen`, open model, reads server metrics | Own tool (week 7, ADR-0012) | Distributed load from several machines |
+| 13 | Vulnerability scan | **govulncheck** | `go run golang.org/x/vuln/cmd/govulncheck` in CI | ✅ **Use** (week 7) | n/a |
 
 **Final dependency count for Tier 1: ~3 modules.** They are pgx, tern and
-go-cmp, plus testcontainers and a WebSocket library added in week 6.
+go-cmp, plus testcontainers and a WebSocket library added in week 6. Week 7 added
+the Prometheus client (metrics only, behind `internal/telemetry`). Its first
+govulncheck run found 17 reachable standard-library vulnerabilities in
+go1.26.5, fixed by moving the toolchain to go1.26.10.
 
 ---
 
