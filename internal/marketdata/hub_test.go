@@ -166,3 +166,38 @@ func TestShutdownDisconnectsEveryone(t *testing.T) {
 }
 
 func seqString(s domain.Seq) string { return seq(s) }
+
+// TestStatsCountWhatHappened: the totals that metrics export match the
+// events, counted exactly. One slow subscriber, one fast, one refusal.
+func TestStatsCountWhatHappened(t *testing.T) {
+	h, src := newHub(t, Config{Buffer: 2, MaxSubscribers: 2})
+	h.tick() // seq 1: published, nobody listening yet
+	slow, _ := h.Subscribe()
+	fast, _ := h.Subscribe()
+	if _, err := h.Subscribe(); !errors.Is(err, ErrTooManySubscribers) {
+		t.Fatalf("third subscriber: %v", err)
+	}
+	<-fast.C()
+	size := uint64(len(h.last))
+
+	// seq 2 fills slow's buffer (it already holds seq 1); seq 3 drops it.
+	for seq := domain.Seq(2); seq <= 3; seq++ {
+		src.set(seq)
+		h.tick()
+		<-fast.C()
+	}
+	<-slow.Done()
+
+	got := h.Stats()
+	want := Stats{
+		Subscribers:    1, // fast only
+		Published:      3,
+		Delivered:      5, // initial to both (2) + seq 2 to both (2) + seq 3 to fast (1)
+		DeliveredBytes: 5 * size,
+		SlowDrops:      1,
+		Refused:        1,
+	}
+	if got != want {
+		t.Errorf("Stats() = %+v\nwant      %+v", got, want)
+	}
+}
