@@ -1,0 +1,105 @@
+{
+  "uid": "cex-engine",
+  "title": "CEX · 1 · Trading engine",
+  "description": "Is the engine keeping up, and where does a command's time go? Queue wait (waiting for the owner goroutine), durable (journal write + fsync, per batch) and apply (pure engine time) add up to the engine total.",
+  "tags": ["cex"],
+  "schemaVersion": 39,
+  "editable": false,
+  "refresh": "5s",
+  "time": {"from": "now-15m", "to": "now"},
+  "panels": [
+    {
+      "type": "stat", "title": "Engine halted", "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+      "description": "1 = trading stopped after a storage or apply failure. Requires an operator.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"mappings": [{"type": "value", "options": {"0": {"text": "trading", "color": "green"}, "1": {"text": "HALTED", "color": "red"}}}], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}},
+      "options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"refId": "A", "expr": "cex_engine_halted"}]
+    },
+    {
+      "type": "stat", "title": "Applied seq", "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"refId": "A", "expr": "cex_engine_applied_seq"}]
+    },
+    {
+      "type": "stat", "title": "Commands / s", "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "reqps"}},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"refId": "A", "expr": "sum(rate(cex_engine_commands_total[30s]))"}]
+    },
+    {
+      "type": "stat", "title": "Fills / s", "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"refId": "A", "expr": "rate(cex_engine_fills_total[30s])"}]
+    },
+    {
+      "type": "stat", "title": "Batch limit", "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0},
+      "description": "CEX_BATCH_SIZE: most commands per fsync. 1 = group commit off.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"refId": "A", "expr": "cex_engine_batch_limit"}]
+    },
+    {
+      "type": "stat", "title": "Refused (overloaded) / s", "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0},
+      "description": "Requests turned away because the intake queue was full: load shedding.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 0.01}]}}},
+      "options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"refId": "A", "expr": "sum(rate(cex_engine_refused_total{reason=\"overloaded\"}[30s]))"}]
+    },
+    {
+      "type": "timeseries", "title": "Where the time goes (p99)", "gridPos": {"h": 9, "w": 12, "x": 0, "y": 4},
+      "description": "p99 of each part of a command's life. Engine total = queue wait + durable (shared by the batch) + apply.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}},
+      "targets": [
+        {"refId": "A", "expr": "histogram_quantile(0.99, sum by (le) (rate(cex_engine_command_seconds_bucket[30s])))", "legendFormat": "engine total"},
+        {"refId": "B", "expr": "histogram_quantile(0.99, sum by (le) (rate(cex_engine_queue_wait_seconds_bucket[30s])))", "legendFormat": "queue wait"},
+        {"refId": "C", "expr": "histogram_quantile(0.99, sum by (le) (rate(cex_engine_durable_seconds_bucket[30s])))", "legendFormat": "durable (per batch)"},
+        {"refId": "D", "expr": "histogram_quantile(0.99, sum by (le) (rate(cex_engine_apply_seconds_bucket[30s])))", "legendFormat": "apply"}
+      ]
+    },
+    {
+      "type": "timeseries", "title": "Where the time goes (p50)", "gridPos": {"h": 9, "w": 12, "x": 12, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}},
+      "targets": [
+        {"refId": "A", "expr": "histogram_quantile(0.5, sum by (le) (rate(cex_engine_command_seconds_bucket[30s])))", "legendFormat": "engine total"},
+        {"refId": "B", "expr": "histogram_quantile(0.5, sum by (le) (rate(cex_engine_queue_wait_seconds_bucket[30s])))", "legendFormat": "queue wait"},
+        {"refId": "C", "expr": "histogram_quantile(0.5, sum by (le) (rate(cex_engine_durable_seconds_bucket[30s])))", "legendFormat": "durable (per batch)"},
+        {"refId": "D", "expr": "histogram_quantile(0.5, sum by (le) (rate(cex_engine_apply_seconds_bucket[30s])))", "legendFormat": "apply"}
+      ]
+    },
+    {
+      "type": "timeseries", "title": "Commands / s by outcome", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 13},
+      "description": "Business rejections are normal answers, not errors.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "reqps", "custom": {"stacking": {"mode": "normal"}, "fillOpacity": 30}}},
+      "targets": [{"refId": "A", "expr": "sum by (outcome) (rate(cex_engine_commands_total[30s])) > 0", "legendFormat": "{{outcome}}"}]
+    },
+    {
+      "type": "timeseries", "title": "Saturation: intake queue", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 13},
+      "description": "When length reaches capacity, new requests are refused with 503.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"refId": "A", "expr": "cex_engine_queue_length", "legendFormat": "waiting"},
+        {"refId": "B", "expr": "cex_engine_queue_capacity", "legendFormat": "capacity"}
+      ]
+    },
+    {
+      "type": "timeseries", "title": "Group commit: commands per fsync (mean)", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 21},
+      "description": "Grows automatically with load: only already-queued commands are grouped, there is no batching timer.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "rate(cex_engine_batch_commands_sum[30s]) / rate(cex_engine_batch_commands_count[30s])", "legendFormat": "commands per fsync"}]
+    },
+    {
+      "type": "timeseries", "title": "Refused requests / s by reason", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 21},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "reqps"}},
+      "targets": [{"refId": "A", "expr": "sum by (reason) (rate(cex_engine_refused_total[30s]))", "legendFormat": "{{reason}}"}]
+    }
+  ]
+}
