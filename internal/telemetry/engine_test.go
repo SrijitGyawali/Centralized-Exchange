@@ -3,6 +3,7 @@ package telemetry
 import (
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
 
@@ -143,5 +144,52 @@ func BenchmarkObserverOverhead(b *testing.B) {
 				}
 			}
 		})
+	}
+}
+
+// BenchmarkApplied: the cost of the observer call the owner goroutine makes
+// for EVERY command, in isolation: one apply observation, one outcome
+// count, one fills count.
+//
+//	go test -run '^$' -bench 'Applied$' -benchmem -count 5 ./internal/telemetry
+func BenchmarkApplied(b *testing.B) {
+	o := New("bench").Engine()
+	body := command.PlaceOrder{Side: domain.Buy, Price: 60_000, Qty: 1, TIF: domain.GTC}
+	res := command.Result{Seq: 1}
+	b.ReportAllocs()
+	for b.Loop() {
+		o.Applied(body, res, 3*time.Microsecond)
+	}
+}
+
+// TestVocabularyIndices pins the hot path's array indices to their labels:
+// every command kind and every outcome lands on the right series.
+func TestVocabularyIndices(t *testing.T) {
+	for body, want := range map[command.Body]string{
+		command.PlaceOrder{}: "place_order", command.CancelOrder{}: "cancel_order", command.Fund{}: "fund",
+	} {
+		if got := commandKinds[kindIndex(body)]; got != want {
+			t.Errorf("%T -> %q, want %q", body, got, want)
+		}
+	}
+	for _, tc := range []struct {
+		res  command.Result
+		want string
+	}{
+		{command.Result{}, "accepted"},
+		{command.Result{Duplicate: true}, "duplicate"},
+		{command.Result{Duplicate: true, Rejected: command.RejectInsufficientFunds}, "duplicate"},
+		{command.Result{Rejected: command.RejectInvalid}, "invalid"},
+		{command.Result{Rejected: command.RejectInsufficientFunds}, "insufficient_funds"},
+		{command.Result{Rejected: command.RejectUnknownOrder}, "unknown_order"},
+		{command.Result{Rejected: command.RejectKeyConflict}, "key_conflict"},
+		{command.Result{Rejected: command.RejectSupplyCap}, "supply_cap"},
+	} {
+		if got := outcomes[outcomeIndex(tc.res)]; got != tc.want {
+			t.Errorf("%+v -> %q, want %q", tc.res, got, tc.want)
+		}
+	}
+	if outcomeIndex(command.Result{Rejected: 200}) != -1 {
+		t.Error("an unknown rejection reason must take the slow path (-1)")
 	}
 }
