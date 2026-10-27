@@ -1,0 +1,27 @@
+# Files Docker never sends to the build. The build context is the repository
+# root (deploy/Dockerfile copies the module), so without this list every
+# image build would upload the WAL, results and git history to the daemon,
+# and a local data/ directory could even end up inside an image.
+
+.git
+.github
+.vscode
+.idea
+
+# runtime state and build output
+data/
+bin/
+coverage.out
+*.exe
+*.test
+
+# local secrets: never in an image
+.env
+
+# documentation, evidence and notes: not needed to compile cexd
+docs/
+evidence/
+track/
+labs/
+loadtest/
+*.md
