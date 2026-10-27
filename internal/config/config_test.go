@@ -156,3 +156,33 @@ func TestDatabaseURL(t *testing.T) {
 		}
 	}
 }
+
+// TestAdminAddr: the operator listener defaults to loopback only, can be
+// moved (Compose binds it inside the container network), and can be off.
+func TestAdminAddr(t *testing.T) {
+	for _, tc := range []struct{ value, want string }{
+		{"", "127.0.0.1:6060"}, // default: never reachable from another machine
+		{":6060", ":6060"},
+		{"127.0.0.1:0", "127.0.0.1:0"},
+		{AdminOff, ""}, // disabled
+	} {
+		c, err := Load(env(map[string]string{"CEX_ADMIN_ADDR": tc.value}))
+		if err != nil || c.AdminAddr != tc.want {
+			t.Errorf("CEX_ADMIN_ADDR=%q: AdminAddr %q, err %v; want %q", tc.value, c.AdminAddr, err, tc.want)
+		}
+	}
+}
+
+func TestQueueSize(t *testing.T) {
+	if c, _ := Load(env(nil)); c.QueueSize != 1024 {
+		t.Errorf("default queue size %d, want 1024", c.QueueSize)
+	}
+	if c, err := Load(env(map[string]string{"CEX_QUEUE_SIZE": "4096"})); err != nil || c.QueueSize != 4096 {
+		t.Errorf("CEX_QUEUE_SIZE=4096: %d, %v", c.QueueSize, err)
+	}
+	for _, bad := range []string{"0", "-1", "lots", "1000001"} {
+		if _, err := Load(env(map[string]string{"CEX_QUEUE_SIZE": bad})); err == nil || !strings.Contains(err.Error(), "CEX_QUEUE_SIZE") {
+			t.Errorf("CEX_QUEUE_SIZE=%q: error = %v, want one naming the variable", bad, err)
+		}
+	}
+}
