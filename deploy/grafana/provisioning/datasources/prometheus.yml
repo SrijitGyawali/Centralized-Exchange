@@ -1,0 +1,14 @@
+# Grafana reads this file at startup and creates the data source, so a fresh
+# `make up` needs no clicking. The fixed uid is what every dashboard JSON
+# refers to.
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy # Grafana's server queries Prometheus; the browser never does
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 5s # the scrape interval: the smallest useful rate() window step
