@@ -1,0 +1,20 @@
+{
+  "name": "outage-under-load",
+  "description": "Steady 200 orders/s for 2 minutes, during which loadtest/outage-under-load.sh freezes PostgreSQL for 30 seconds and slow WebSocket viewers keep getting disconnected. Trading latency must not change; projection lag must grow, then return to near zero.",
+  "seed": 3,
+  "users": 50,
+  "mix": {"rest": 45, "cross": 35, "cancel": 20},
+  "mid_price": 60000,
+  "spread_ticks": 50,
+  "max_qty_lots": 50,
+  "fund_usdt": 500000,
+  "fund_btc": 50,
+  "warmup": "10s",
+  "stages": [
+    {"rate": 200, "duration": "20s"},
+    {"rate": 200, "duration": "40s"},
+    {"rate": 200, "duration": "60s"}
+  ],
+  "max_in_flight": 1000,
+  "timeout": "5s"
+}
