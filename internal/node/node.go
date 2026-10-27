@@ -35,6 +35,9 @@ type Config struct {
 	Engine engine.Config
 	// JournalHooks are test-only crash points (see journal.Hooks).
 	JournalHooks journal.Hooks
+	// JournalOnSync receives every durable append's size and its write and
+	// fsync times (see journal.Options.OnSync). nil means not measured.
+	JournalOnSync func(bytes int, write, sync time.Duration)
 }
 
 // Recovery reports what Open found on disk.
@@ -64,7 +67,7 @@ func Open(cfg Config) (*Node, error) {
 	}
 
 	st := state.New()
-	j, scan, err := journal.Open(filepath.Join(cfg.Dir, journal.FileName), journal.Options{Hooks: cfg.JournalHooks}, replayInto(st))
+	j, scan, err := journal.Open(filepath.Join(cfg.Dir, journal.FileName), journal.Options{Hooks: cfg.JournalHooks, OnSync: cfg.JournalOnSync}, replayInto(st))
 	if err != nil {
 		return nil, fmt.Errorf("node: recovering the journal: %w", err)
 	}
