@@ -1,0 +1,16 @@
+{
+  "name": "steady-100",
+  "description": "The plan's first experiment: 100 orders per second for 10 minutes after a 30-second warmup. Tests the hypothesis 'p99 under 50 ms at 100 orders/s' and shows whether anything drifts over time (memory, book depth, latency).",
+  "seed": 2,
+  "users": 50,
+  "mix": {"rest": 45, "cross": 35, "cancel": 20},
+  "mid_price": 60000,
+  "spread_ticks": 50,
+  "max_qty_lots": 50,
+  "fund_usdt": 500000,
+  "fund_btc": 50,
+  "warmup": "30s",
+  "stages": [{"rate": 100, "duration": "10m"}],
+  "max_in_flight": 1000,
+  "timeout": "5s"
+}
