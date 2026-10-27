@@ -62,7 +62,11 @@ func (s slowStorage) AppendBatch([]command.Command) error {
 // they add up the way the Observer documentation says.
 func TestObserverSeesEachPartOfACommandsLife(t *testing.T) {
 	rec := &recorder{}
-	const fsync = 5 * time.Millisecond
+	// Sleeps stand in for the disk and the queue. time.Sleep is timed by the
+	// Go runtime's own clock (on Windows it advances in ~0.5 ms ticks) while
+	// the engine measures with internal/clock, so the checks below allow a
+	// quarter of slack instead of demanding the exact sleep.
+	const fsync, queued = 20 * time.Millisecond, 10 * time.Millisecond
 	e := New(state.New(), Config{Journal: slowStorage{delay: fsync}, BatchSize: 64, Observer: rec})
 
 	// Three commands admitted while Run is not started: they must form ONE
@@ -76,7 +80,7 @@ func TestObserverSeesEachPartOfACommandsLife(t *testing.T) {
 		})
 	}
 	waitQueued(t, e, 3)
-	time.Sleep(2 * time.Millisecond) // a measurable wait in the queue
+	time.Sleep(queued) // a measurable wait in the queue
 	runInBackground(t, e)
 	wg.Wait()
 	if _, err := e.Balance(t.Context(), alice, domain.USDT); err != nil { // one query
@@ -88,15 +92,15 @@ func TestObserverSeesEachPartOfACommandsLife(t *testing.T) {
 	if len(rec.durable) != 1 || rec.durable[0] != 3 {
 		t.Fatalf("durable appends = %v, want one append of 3 commands", rec.durable)
 	}
-	if rec.durableD[0] < fsync {
-		t.Errorf("durable time %s, want at least the %s fsync", rec.durableD[0], fsync)
+	if rec.durableD[0] < fsync*3/4 {
+		t.Errorf("durable time %s, want about the %s fsync", rec.durableD[0], fsync)
 	}
 	if len(rec.waits) != 4 { // 3 commands + 1 query
 		t.Fatalf("queue waits = %d, want 4", len(rec.waits))
 	}
 	for _, w := range rec.waits[:3] {
-		if w < 2*time.Millisecond {
-			t.Errorf("queue wait %s, want at least the 2ms the commands sat in the queue", w)
+		if w < queued*3/4 {
+			t.Errorf("queue wait %s, want about the %s the commands sat in the queue", w, queued)
 		}
 	}
 	if len(rec.applied) != 3 || len(rec.completed) != 3 || rec.queries != 1 {
@@ -109,7 +113,7 @@ func TestObserverSeesEachPartOfACommandsLife(t *testing.T) {
 	}
 	// The total includes the queue wait AND the shared fsync.
 	for _, c := range rec.completed {
-		if c < fsync+2*time.Millisecond {
+		if c < (fsync+queued)*3/4 {
 			t.Errorf("completed %s is shorter than queue wait + fsync", c)
 		}
 	}

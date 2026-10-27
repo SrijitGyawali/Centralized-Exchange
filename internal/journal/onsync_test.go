@@ -27,7 +27,7 @@ func TestOnSyncReportsBytesWriteAndSync(t *testing.T) {
 		write, sync time.Duration
 	}
 	var calls []call
-	f := &slowSyncFile{delay: 5 * time.Millisecond}
+	f := &slowSyncFile{delay: 20 * time.Millisecond}
 	j := &Journal{f: f, nextSeq: 1, onSync: func(n int, w, s time.Duration) { calls = append(calls, call{n, w, s}) }}
 
 	cmds := sequenced(3)
@@ -40,10 +40,14 @@ func TestOnSyncReportsBytesWriteAndSync(t *testing.T) {
 	if want := len(encodeFrames(t, cmds)); calls[0].bytes != want {
 		t.Errorf("bytes = %d, want %d (three frames)", calls[0].bytes, want)
 	}
-	if calls[0].sync < f.delay {
-		t.Errorf("sync = %s, want at least the %s fsync", calls[0].sync, f.delay)
+	// The fake fsync is a time.Sleep, which the Go runtime times with its own
+	// clock; on Windows that clock advances in ~0.5 ms ticks, while OnSync
+	// measures with internal/clock. The two can disagree by up to a tick, so
+	// a 20 ms sleep may measure 19.6 ms: allow a quarter.
+	if calls[0].sync < f.delay*3/4 {
+		t.Errorf("sync = %s, want about the %s fsync", calls[0].sync, f.delay)
 	}
-	if calls[0].write >= f.delay {
+	if calls[0].write >= f.delay/2 {
 		t.Errorf("write = %s: the fsync leaked into the write time", calls[0].write)
 	}
 

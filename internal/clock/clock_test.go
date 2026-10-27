@@ -41,9 +41,11 @@ func TestMonotonicAndConsistentWithSleep(t *testing.T) {
 		}
 		prev = n
 	}
+	// time.Sleep is timed by the runtime's own (on Windows, coarse) clock, so
+	// the precise clock may see a little less than 20 ms: allow a quarter.
 	start := Now()
 	time.Sleep(20 * time.Millisecond)
-	if d := Since(start); d < 20*time.Millisecond || d > 2*time.Second {
+	if d := Since(start); d < 15*time.Millisecond || d > 2*time.Second {
 		t.Errorf("a 20 ms sleep measured %s", d)
 	}
 	if got := start.Add(5 * time.Millisecond).Sub(start); got != 5*time.Millisecond {
