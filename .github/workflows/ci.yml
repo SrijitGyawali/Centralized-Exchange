@@ -51,3 +51,39 @@ jobs:
           go-version-file: go.mod
       - name: PostgreSQL read-model tests (testcontainers)
         run: go test -tags=integration -count=1 ./internal/projector ./cmd/cexd
+
+  # Known vulnerabilities in the module graph (ADR-0003 rule 5). govulncheck
+  # reports only vulnerable code that is actually REACHABLE from our packages,
+  # so it fails on real exposure, not on every advisory in go.sum.
+  vuln:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
+
+  # The deployment files must work, not just exist: the image builds with the
+  # Dockerfile Compose uses, and Prometheus accepts its config and alert rules.
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build the cexd image
+        run: docker build -f deploy/Dockerfile --build-arg VERSION=${GITHUB_SHA::12} -t cex/cexd:ci .
+      - name: the image reports healthy
+        run: |
+          docker run -d --name cexd -e CEX_API_TOKENS='[]' cex/cexd:ci
+          for i in $(seq 1 30); do
+            status=$(docker inspect -f '{{.State.Health.Status}}' cexd)
+            [ "$status" = healthy ] && exit 0
+            sleep 2
+          done
+          docker logs cexd; exit 1
+      - name: promtool checks the Prometheus config and alert rules
+        run: >
+          docker run --rm -v "$PWD/deploy/prometheus:/etc/prometheus:ro"
+          --entrypoint promtool prom/prometheus:v3.5.0
+          check config /etc/prometheus/prometheus.yml
