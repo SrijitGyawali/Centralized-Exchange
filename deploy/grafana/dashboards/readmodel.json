@@ -1,0 +1,74 @@
+{
+  "uid": "cex-readmodel",
+  "title": "CEX · 3 · Read model and market data",
+  "description": "The two consumers that must never slow trading down: the PostgreSQL projector (ADR-0009) and the WebSocket feed (ADR-0010). Both may fall behind; neither may block the engine.",
+  "tags": ["cex"],
+  "schemaVersion": 39,
+  "editable": false,
+  "refresh": "5s",
+  "time": {"from": "now-15m", "to": "now"},
+  "panels": [
+    {
+      "type": "stat", "title": "Projector", "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "description": "disabled = CEX_DATABASE_URL not set. failing = cannot write to PostgreSQL; it retries and catches up from its checkpoint.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"mappings": [{"type": "value", "options": {"0": {"text": "failing", "color": "red"}, "1": {"text": "healthy", "color": "green"}, "-1": {"text": "disabled", "color": "text"}}}]}},
+      "options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"refId": "A", "expr": "(cex_projection_healthy and on() cex_projection_enabled == 1) or on() (cex_projection_enabled - 1)"}]
+    },
+    {
+      "type": "stat", "title": "Projection lag (commands)", "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1000}, {"color": "red", "value": 10000}]}}},
+      "options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"refId": "A", "expr": "cex_projection_lag_commands"}]
+    },
+    {
+      "type": "stat", "title": "WebSocket viewers", "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"refId": "A", "expr": "cex_marketdata_subscribers"}]
+    },
+    {
+      "type": "stat", "title": "Slow viewers dropped (1h)", "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"refId": "A", "expr": "increase(cex_marketdata_slow_drops_total[1h])"}]
+    },
+    {
+      "type": "timeseries", "title": "Applied vs projected seq", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "description": "The projected line follows the applied one; during a database outage it stops, then climbs back.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"refId": "A", "expr": "cex_engine_applied_seq", "legendFormat": "applied (engine)"},
+        {"refId": "B", "expr": "cex_projection_projected_seq", "legendFormat": "projected (PostgreSQL)"}
+      ]
+    },
+    {
+      "type": "timeseries", "title": "Projection lag and failures", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"refId": "A", "expr": "cex_projection_lag_commands", "legendFormat": "lag (commands)"},
+        {"refId": "B", "expr": "increase(cex_projection_failures_total[1m])", "legendFormat": "failures in the last minute"}
+      ]
+    },
+    {
+      "type": "timeseries", "title": "Feed: snapshots published and messages delivered / s", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "description": "Published is at most 10/s (one per 100 ms tick, only if the Seq changed); delivered = published × viewers.",
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"refId": "A", "expr": "rate(cex_marketdata_published_total[30s])", "legendFormat": "published"},
+        {"refId": "B", "expr": "rate(cex_marketdata_delivered_total[30s])", "legendFormat": "delivered"}
+      ]
+    },
+    {
+      "type": "timeseries", "title": "Feed: bandwidth and slow-consumer drops", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {}, "overrides": [{"matcher": {"id": "byName", "options": "bytes / s"}, "properties": [{"id": "unit", "value": "Bps"}]}]},
+      "targets": [
+        {"refId": "A", "expr": "rate(cex_marketdata_delivered_bytes_total[30s])", "legendFormat": "bytes / s"},
+        {"refId": "B", "expr": "rate(cex_marketdata_slow_drops_total[30s])", "legendFormat": "slow drops / s"}
+      ]
+    }
+  ]
+}
