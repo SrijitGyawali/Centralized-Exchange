@@ -27,7 +27,11 @@ const (
 	EnvDataDir         = "CEX_DATA_DIR"
 	EnvLogLevel        = "CEX_LOG_LEVEL"
 	EnvShutdownTimeout = "CEX_SHUTDOWN_TIMEOUT"
+	EnvAdminAddr       = "CEX_ADMIN_ADDR"
 )
+
+// AdminOff is the CEX_ADMIN_ADDR value that disables the admin listener.
+const AdminOff = "off"
 
 // Config is the complete startup configuration of cexd.
 type Config struct {
@@ -52,6 +56,14 @@ type Config struct {
 	// DatabaseURL enables the PostgreSQL read model (week 6). Empty means
 	// no projection. It contains a password, so it is never logged.
 	DatabaseURL string
+	// AdminAddr is the PRIVATE operator listener for /metrics and
+	// /debug/pprof (week 7). Default 127.0.0.1:6060: loopback only, so
+	// nothing outside the machine can reach profiling endpoints. Empty
+	// after Load means disabled (CEX_ADMIN_ADDR=off).
+	AdminAddr string
+	// QueueSize bounds the engine's intake queue (requests waiting for the
+	// owner goroutine). A full queue refuses new requests with 503.
+	QueueSize int
 }
 
 // Identity is provisioned by an operator, never supplied by an HTTP caller.
@@ -71,6 +83,7 @@ func Default() Config {
 		BatchSize:       64, RatePerSecond: 100, RateBurst: 200,
 		RequestTimeout: 5 * time.Second, ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout: 10 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second,
+		AdminAddr: "127.0.0.1:6060", QueueSize: 1024,
 	}
 }
 
@@ -91,6 +104,13 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	if v := getenv(EnvDataDir); v != "" {
 		cfg.DataDir = v
+	}
+	switch v := getenv(EnvAdminAddr); v {
+	case "":
+	case AdminOff:
+		cfg.AdminAddr = ""
+	default:
+		cfg.AdminAddr = v
 	}
 	if v := getenv(EnvLogLevel); v != "" {
 		// slog.Level understands "debug", "info", "warn", "error"
@@ -136,6 +156,7 @@ func Load(getenv func(string) string) (Config, error) {
 		max  int
 	}{
 		{"CEX_BATCH_SIZE", &cfg.BatchSize, 1024}, {"CEX_RATE_BURST", &cfg.RateBurst, 1000000},
+		{"CEX_QUEUE_SIZE", &cfg.QueueSize, 1000000},
 	} {
 		if v := getenv(setting.name); v != "" {
 			n, err := strconv.Atoi(v)
