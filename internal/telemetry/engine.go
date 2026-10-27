@@ -15,43 +15,72 @@ import (
 // Label values are fixed vocabularies, never free text: every distinct
 // label value is a separate time series in Prometheus, so labels must have
 // a small, known set of values.
+//
+// Kinds and outcomes are ARRAYS indexed by constants, written with keyed
+// elements ({kindFund: "fund"}), so an index and its label can never drift
+// apart. The observer uses the indices on the hot path (see engineObserver).
+const (
+	kindPlace = iota
+	kindCancel
+	kindFund
+	numKinds
+)
+
+const (
+	outAccepted = iota
+	outDuplicate
+	outInvalid
+	outInsufficientFunds
+	outUnknownOrder
+	outKeyConflict
+	outSupplyCap
+	numOutcomes
+)
+
 var (
-	commandKinds   = []string{"place_order", "cancel_order", "fund"}
-	outcomes       = []string{"accepted", "duplicate", "invalid", "insufficient_funds", "unknown_order", "key_conflict", "supply_cap"}
+	commandKinds = [numKinds]string{kindPlace: "place_order", kindCancel: "cancel_order", kindFund: "fund"}
+	outcomes     = [numOutcomes]string{
+		outAccepted: "accepted", outDuplicate: "duplicate", outInvalid: "invalid",
+		outInsufficientFunds: "insufficient_funds", outUnknownOrder: "unknown_order",
+		outKeyConflict: "key_conflict", outSupplyCap: "supply_cap",
+	}
 	refusalReasons = []string{"overloaded", "closed", "halted"}
 )
 
-func kind(b command.Body) string {
+// kindIndex returns the body's index in commandKinds, or -1 for a type the
+// vocabulary does not know (impossible today: command.Body is sealed).
+func kindIndex(b command.Body) int {
 	switch b.(type) {
 	case command.PlaceOrder:
-		return "place_order"
+		return kindPlace
 	case command.CancelOrder:
-		return "cancel_order"
+		return kindCancel
 	case command.Fund:
-		return "fund"
+		return kindFund
 	}
-	return "other"
+	return -1
 }
 
-func outcome(r command.Result) string {
+// outcomeIndex returns the result's index in outcomes, or -1.
+func outcomeIndex(r command.Result) int {
 	if r.Duplicate {
-		return "duplicate"
+		return outDuplicate
 	}
 	switch r.Rejected {
 	case command.NotRejected:
-		return "accepted"
+		return outAccepted
 	case command.RejectInvalid:
-		return "invalid"
+		return outInvalid
 	case command.RejectInsufficientFunds:
-		return "insufficient_funds"
+		return outInsufficientFunds
 	case command.RejectUnknownOrder:
-		return "unknown_order"
+		return outUnknownOrder
 	case command.RejectKeyConflict:
-		return "key_conflict"
+		return outKeyConflict
 	case command.RejectSupplyCap:
-		return "supply_cap"
+		return outSupplyCap
 	}
-	return "other"
+	return -1
 }
 
 func refusal(err error) string {
@@ -68,34 +97,69 @@ func refusal(err error) string {
 
 // Engine returns the engine.Observer that records into these metrics. Pass
 // it as engine.Config.Observer.
-func (m *Metrics) Engine() engine.Observer { return engineObserver{m} }
+func (m *Metrics) Engine() engine.Observer { return m.observer }
 
 // engineObserver is a separate type so Metrics itself does not grow
 // QueueWait, Durable… methods that nobody else should call.
-type engineObserver struct{ m *Metrics }
+//
+// It holds every labelled child metric ALREADY RESOLVED. Applied runs on the
+// owner goroutine for every command; WithLabelValues would hash the label
+// values and take a read lock to find the child each time (the week-7
+// profile showed it costing as much as publishing the snapshot). Resolving
+// once at startup turns that into two array lookups.
+type engineObserver struct {
+	m        *Metrics
+	apply    [numKinds]prometheus.Observer
+	commands [numKinds][numOutcomes]prometheus.Counter
+}
+
+// newEngineObserver creates every kind and kind×outcome series (at zero, so
+// they exist before the first event) and keeps them.
+func newEngineObserver(m *Metrics) *engineObserver {
+	o := &engineObserver{m: m}
+	for k, kname := range commandKinds {
+		o.apply[k] = m.apply.WithLabelValues(kname)
+		for oc, oname := range outcomes {
+			o.commands[k][oc] = m.commands.WithLabelValues(kname, oname)
+		}
+	}
+	return o
+}
 
 // The compiler checks the interface is satisfied, here, at build time.
-var _ engine.Observer = engineObserver{}
+var _ engine.Observer = (*engineObserver)(nil)
 
-func (o engineObserver) QueueWait(d time.Duration) { o.m.queueWait.Observe(seconds(d)) }
+func (o *engineObserver) QueueWait(d time.Duration) { o.m.queueWait.Observe(seconds(d)) }
 
-func (o engineObserver) Durable(n int, d time.Duration) {
+func (o *engineObserver) Durable(n int, d time.Duration) {
 	o.m.durable.Observe(seconds(d))
 	o.m.batch.Observe(float64(n))
 }
 
-func (o engineObserver) Applied(body command.Body, res command.Result, d time.Duration) {
-	k := kind(body)
-	o.m.apply.WithLabelValues(k).Observe(seconds(d))
-	o.m.commands.WithLabelValues(k, outcome(res)).Inc()
+func (o *engineObserver) Applied(body command.Body, res command.Result, d time.Duration) {
+	k, oc := kindIndex(body), outcomeIndex(res)
+	if k >= 0 && oc >= 0 {
+		o.apply[k].Observe(seconds(d))
+		o.commands[k][oc].Inc()
+	} else { // outside the vocabulary: the slow path, under "other"
+		kname, oname := "other", "other"
+		if k >= 0 {
+			kname = commandKinds[k]
+		}
+		if oc >= 0 {
+			oname = outcomes[oc]
+		}
+		o.m.apply.WithLabelValues(kname).Observe(seconds(d))
+		o.m.commands.WithLabelValues(kname, oname).Inc()
+	}
 	if !res.Duplicate { // a retry's fills happened the first time
 		o.m.fills.Add(float64(len(res.Fills)))
 	}
 }
 
-func (o engineObserver) Completed(d time.Duration) { o.m.completed.Observe(seconds(d)) }
-func (o engineObserver) Query(d time.Duration)     { o.m.query.Observe(seconds(d)) }
-func (o engineObserver) Refused(err error)         { o.m.refused.WithLabelValues(refusal(err)).Inc() }
+func (o *engineObserver) Completed(d time.Duration) { o.m.completed.Observe(seconds(d)) }
+func (o *engineObserver) Query(d time.Duration)     { o.m.query.Observe(seconds(d)) }
+func (o *engineObserver) Refused(err error)         { o.m.refused.WithLabelValues(refusal(err)).Inc() }
 
 // WatchEngine exports values read at scrape time: queue length and
 // capacity (saturation), the applied Seq (progress), and whether the engine

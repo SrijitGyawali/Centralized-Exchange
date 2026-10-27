@@ -49,6 +49,7 @@ type Metrics struct {
 	commands  *prometheus.CounterVec // by command kind and outcome
 	fills     prometheus.Counter
 	refused   *prometheus.CounterVec // by reason
+	observer  *engineObserver        // the engine.Observer, children resolved once
 
 	// journal
 	journalWrite prometheus.Histogram
@@ -149,13 +150,9 @@ func New(version string) *Metrics {
 
 	// Create every known label combination up front, at zero. A series
 	// that does not exist yet is invisible to rate() and alerts, so "no
-	// rejections so far" would look like "no data".
-	for _, k := range commandKinds {
-		m.apply.WithLabelValues(k)
-		for _, o := range outcomes {
-			m.commands.WithLabelValues(k, o)
-		}
-	}
+	// rejections so far" would look like "no data". The engine observer
+	// also keeps the kind and kind×outcome children it creates.
+	m.observer = newEngineObserver(m)
 	for _, r := range refusalReasons {
 		m.refused.WithLabelValues(r)
 	}
