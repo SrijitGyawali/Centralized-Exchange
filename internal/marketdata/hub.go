@@ -77,6 +77,18 @@ type Hub struct {
 	last    []byte     // the latest encoded message: sent first to new subscribers
 	lastSeq domain.Seq // the Seq of `last`
 	closed  bool
+	stats   Stats // running totals, guarded by mu like everything above
+}
+
+// Stats are the hub's running totals since it started (week 7 metrics).
+// Together they answer "is anyone watching, and is anyone too slow?".
+type Stats struct {
+	Subscribers    int    // streams open right now
+	Published      uint64 // snapshots encoded: one per new Seq the hub saw
+	Delivered      uint64 // messages placed in subscriber buffers
+	DeliveredBytes uint64 // their total size: the feed's outgoing bandwidth
+	SlowDrops      uint64 // subscribers disconnected for being too slow
+	Refused        uint64 // Subscribe calls turned away (limit reached, or closed)
 }
 
 // Subscriber is one open stream.
@@ -130,11 +142,15 @@ func (h *Hub) tick() {
 	}
 	msg := encode(snap) // encoded once, shared by every subscriber (never modified after)
 	h.last, h.lastSeq = msg, snap.Seq
+	h.stats.Published++
 	for s := range h.subs {
 		select {
 		case s.ch <- msg:
+			h.stats.Delivered++
+			h.stats.DeliveredBytes += uint64(len(msg))
 		default: // buffer full: this subscriber cannot keep up
 			h.drop(s, ReasonSlow)
+			h.stats.SlowDrops++
 		}
 	}
 }
@@ -146,14 +162,18 @@ func (h *Hub) Subscribe() (*Subscriber, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.closed {
+		h.stats.Refused++
 		return nil, ErrClosed
 	}
 	if len(h.subs) >= h.cfg.MaxSubscribers {
+		h.stats.Refused++
 		return nil, ErrTooManySubscribers
 	}
 	s := &Subscriber{ch: make(chan []byte, h.cfg.Buffer), done: make(chan struct{})}
 	if h.last != nil {
 		s.ch <- h.last // cannot block: the buffer is new and has room
+		h.stats.Delivered++
+		h.stats.DeliveredBytes += uint64(len(h.last))
 	}
 	h.subs[s] = struct{}{}
 	return s, nil
@@ -165,6 +185,15 @@ func (h *Hub) Unsubscribe(s *Subscriber) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	delete(h.subs, s)
+}
+
+// Stats returns a copy of the running totals.
+func (h *Hub) Stats() Stats {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	s := h.stats
+	s.Subscribers = len(h.subs)
+	return s
 }
 
 // Subscribers returns how many streams are open.
