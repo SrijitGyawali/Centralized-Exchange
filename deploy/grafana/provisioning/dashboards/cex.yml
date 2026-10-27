@@ -1,0 +1,13 @@
+# Load every dashboard JSON in /etc/grafana/dashboards (deploy/grafana/dashboards
+# in the repository) into a "CEX" folder. Dashboards are code: change the
+# JSON in git, not in the UI (UI edits are disabled so they cannot drift).
+apiVersion: 1
+providers:
+  - name: cex
+    folder: CEX
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/dashboards
