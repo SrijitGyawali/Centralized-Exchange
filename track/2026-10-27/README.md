@@ -186,7 +186,32 @@ make down
 
 ---
 
-## 11. Next session (week 8)
+## 11. How the commits were checked (and what that found)
+
+Every week-7 commit was checked out on its own in a separate worktree:
+built, vetted (Windows, Linux, and with the integration tag) and, if it
+touched Go code, tested. Of 89 commits:
+
+- **78 passed.**
+- **10 failed in two timing tests** (`TestOnSyncReportsBytesWriteAndSync`,
+  `TestMonotonicAndConsistentWithSleep`): a 5 ms `time.Sleep` measured
+  4.44-4.97 ms, a 20 ms one 19.93 ms. `time.Sleep` is timed by the Go runtime's coarse Windows
+  clock, the measurement by the precise one, and the tests demanded the
+  two agree exactly. Fixed in `abcdc50` (longer sleeps, ¾ required,
+  300/300 passes under `-race`). The same ruler lesson as section 3, found
+  a second time, in the tests.
+- **1 does not compile on its own: `68facb6`** (`stats.go` uses
+  `ServerStats`, which the next commit, `037c8a6`, defines: the two files
+  were committed in the wrong order). Every commit from `037c8a6` on builds.
+  It was NOT fixed by rewriting history, because that would change every
+  later hash, including `b3c2d12`, `2ff20fd` and `a384d9a`, which the raw
+  load-test results record and which the evidence rules forbid editing.
+  `git bisect skip` covers it if ever needed. Lesson: order commits by
+  what each file *uses*, and check before committing, not after.
+
+---
+
+## 12. Next session (week 8)
 
 **Freeze and demonstrate**: a replay-inspect CLI polish, quickstart,
 architecture diagram, known-limitations page (this week added several:
