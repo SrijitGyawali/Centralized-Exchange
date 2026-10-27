@@ -1,0 +1,647 @@
+{
+  "label": "batch=64",
+  "environment": {
+    "started_at": "2026-10-27T13:56:16Z",
+    "note": "Windows 11 laptop, Intel i7-1165G7 (4 cores / 8 threads), 7.7 GiB RAM, KIOXIA 512 GB NVMe SSD (NTFS), on AC power; loadgen on the same machine",
+    "os": "windows",
+    "arch": "amd64",
+    "logical_cpus": 8,
+    "loadgen_go": "go1.26.10",
+    "git_commit": "a384d9a52338",
+    "server_version": "a384d9a",
+    "server_go": "go1.26.10",
+    "server_batch_limit": 64,
+    "server_queue_capacity": 1024,
+    "loadgen_on_server_machine": true
+  },
+  "workload": {
+    "name": "step-to-saturation",
+    "description": "Doubles the offered order rate every 20 seconds, from 100/s to 3200/s, to find where latency bends and where the server starts refusing work. Run once with CEX_BATCH_SIZE=1 and once with the default 64 to compare fsync-per-order with group commit.",
+    "seed": 1,
+    "users": 50,
+    "mix": {
+      "rest": 45,
+      "cross": 35,
+      "cancel": 20
+    },
+    "mid_price": 60000,
+    "spread_ticks": 50,
+    "max_qty_lots": 50,
+    "fund_usdt": 500000,
+    "fund_btc": 50,
+    "warmup": "10s",
+    "stages": [
+      {
+        "rate": 100,
+        "duration": "20s"
+      },
+      {
+        "rate": 200,
+        "duration": "20s"
+      },
+      {
+        "rate": 400,
+        "duration": "20s"
+      },
+      {
+        "rate": 800,
+        "duration": "20s"
+      },
+      {
+        "rate": 1600,
+        "duration": "20s"
+      },
+      {
+        "rate": 3200,
+        "duration": "20s"
+      }
+    ],
+    "max_in_flight": 2000,
+    "timeout": "5s"
+  },
+  "warmup": {
+    "name": "warmup",
+    "offered_rate_per_s": 100,
+    "duration": "10s",
+    "arrivals": 1000,
+    "dropped": 0,
+    "sent": 1000,
+    "completed_rate_per_s": 100,
+    "by_status": {
+      "200": 808,
+      "404": 192
+    },
+    "answered": 1000,
+    "errors": 0,
+    "error_rate": 0,
+    "latency_answered": {
+      "p50_ms": 1.977,
+      "p90_ms": 3.103,
+      "p95_ms": 7.92,
+      "p99_ms": 83.939,
+      "p99_9_ms": 181.189,
+      "max_ms": 182.868
+    },
+    "latency_errors": {
+      "p50_ms": 0,
+      "p90_ms": 0,
+      "p95_ms": 0,
+      "p99_ms": 0,
+      "p99_9_ms": 0,
+      "max_ms": 0
+    },
+    "server": {
+      "http_orders_answered": {
+        "count": 999,
+        "mean_ms": 2.007,
+        "p50_ms": 1.42,
+        "p99_ms": 20.008
+      },
+      "engine_total": {
+        "count": 999,
+        "mean_ms": 1.876,
+        "p50_ms": 1.333,
+        "p99_ms": 18.832
+      },
+      "queue_wait": {
+        "count": 1000,
+        "mean_ms": 0.192,
+        "p50_ms": 0.026,
+        "p99_ms": 4.857
+      },
+      "durable_per_batch": {
+        "count": 980,
+        "mean_ms": 1.622,
+        "p50_ms": 1.32,
+        "p99_ms": 14
+      },
+      "apply": {
+        "count": 999,
+        "mean_ms": 0.029,
+        "p50_ms": 0.027,
+        "p99_ms": 0.15
+      },
+      "fsync": {
+        "count": 980,
+        "mean_ms": 1.577,
+        "p50_ms": 1.249,
+        "p99_ms": 13
+      },
+      "batch_mean_commands": 1,
+      "refused_overloaded": 0,
+      "outcomes": {
+        "accepted": 807,
+        "unknown_order": 192
+      },
+      "cpu_cores": 0.1,
+      "max_queue_length": 0,
+      "queue_capacity": 1024,
+      "max_rss_mib": 72.5,
+      "max_goroutines": 27,
+      "max_projection_lag": 0,
+      "ws_slow_drops": 0
+    }
+  },
+  "stages": [
+    {
+      "name": "1: 100/s",
+      "offered_rate_per_s": 100,
+      "duration": "20s",
+      "arrivals": 2000,
+      "dropped": 0,
+      "sent": 2000,
+      "completed_rate_per_s": 100,
+      "by_status": {
+        "200": 1613,
+        "404": 387
+      },
+      "answered": 2000,
+      "errors": 0,
+      "error_rate": 0,
+      "latency_answered": {
+        "p50_ms": 2.407,
+        "p90_ms": 4.492,
+        "p95_ms": 29.268,
+        "p99_ms": 125.93,
+        "p99_9_ms": 182.142,
+        "max_ms": 202.177
+      },
+      "latency_errors": {
+        "p50_ms": 0,
+        "p90_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 0,
+        "p99_9_ms": 0,
+        "max_ms": 0
+      },
+      "server": {
+        "http_orders_answered": {
+          "count": 2000,
+          "mean_ms": 6.327,
+          "p50_ms": 1.699,
+          "p99_ms": 171.053
+        },
+        "engine_total": {
+          "count": 2000,
+          "mean_ms": 6.123,
+          "p50_ms": 1.546,
+          "p99_ms": 171.053
+        },
+        "queue_wait": {
+          "count": 1999,
+          "mean_ms": 1.738,
+          "p50_ms": 0.027,
+          "p99_ms": 59.548
+        },
+        "durable_per_batch": {
+          "count": 1913,
+          "mean_ms": 2.127,
+          "p50_ms": 1.458,
+          "p99_ms": 20.191
+        },
+        "apply": {
+          "count": 2000,
+          "mean_ms": 0.042,
+          "p50_ms": 0.035,
+          "p99_ms": 0.217
+        },
+        "fsync": {
+          "count": 1913,
+          "mean_ms": 2.057,
+          "p50_ms": 1.405,
+          "p99_ms": 19.504
+        },
+        "batch_mean_commands": 1,
+        "refused_overloaded": 0,
+        "outcomes": {
+          "accepted": 1613,
+          "unknown_order": 387
+        },
+        "cpu_cores": 0.12,
+        "max_queue_length": 2,
+        "queue_capacity": 1024,
+        "max_rss_mib": 74.2,
+        "max_goroutines": 42,
+        "max_projection_lag": 0,
+        "ws_slow_drops": 0
+      }
+    },
+    {
+      "name": "2: 200/s",
+      "offered_rate_per_s": 200,
+      "duration": "20s",
+      "arrivals": 4000,
+      "dropped": 0,
+      "sent": 4000,
+      "completed_rate_per_s": 200,
+      "by_status": {
+        "200": 3186,
+        "404": 814
+      },
+      "answered": 4000,
+      "errors": 0,
+      "error_rate": 0,
+      "latency_answered": {
+        "p50_ms": 2.526,
+        "p90_ms": 3.338,
+        "p95_ms": 4.278,
+        "p99_ms": 18.251,
+        "p99_9_ms": 46.232,
+        "max_ms": 61.259
+      },
+      "latency_errors": {
+        "p50_ms": 0,
+        "p90_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 0,
+        "p99_9_ms": 0,
+        "max_ms": 0
+      },
+      "server": {
+        "http_orders_answered": {
+          "count": 4000,
+          "mean_ms": 1.878,
+          "p50_ms": 1.666,
+          "p99_ms": 9.4
+        },
+        "engine_total": {
+          "count": 4000,
+          "mean_ms": 1.734,
+          "p50_ms": 1.532,
+          "p99_ms": 8.81
+        },
+        "queue_wait": {
+          "count": 4001,
+          "mean_ms": 0.106,
+          "p50_ms": 0.026,
+          "p99_ms": 3.116
+        },
+        "durable_per_batch": {
+          "count": 3945,
+          "mean_ms": 1.561,
+          "p50_ms": 1.452,
+          "p99_ms": 5.277
+        },
+        "apply": {
+          "count": 4000,
+          "mean_ms": 0.04,
+          "p50_ms": 0.035,
+          "p99_ms": 0.214
+        },
+        "fsync": {
+          "count": 3945,
+          "mean_ms": 1.502,
+          "p50_ms": 1.394,
+          "p99_ms": 4.971
+        },
+        "batch_mean_commands": 1,
+        "refused_overloaded": 0,
+        "outcomes": {
+          "accepted": 3186,
+          "unknown_order": 814
+        },
+        "cpu_cores": 0.22,
+        "max_queue_length": 0,
+        "queue_capacity": 1024,
+        "max_rss_mib": 75.7,
+        "max_goroutines": 37,
+        "max_projection_lag": 0,
+        "ws_slow_drops": 0
+      }
+    },
+    {
+      "name": "3: 400/s",
+      "offered_rate_per_s": 400,
+      "duration": "20s",
+      "arrivals": 8000,
+      "dropped": 0,
+      "sent": 8000,
+      "completed_rate_per_s": 400,
+      "by_status": {
+        "200": 6388,
+        "404": 1612
+      },
+      "answered": 8000,
+      "errors": 0,
+      "error_rate": 0,
+      "latency_answered": {
+        "p50_ms": 2.52,
+        "p90_ms": 3.298,
+        "p95_ms": 3.714,
+        "p99_ms": 62.492,
+        "p99_9_ms": 230.861,
+        "max_ms": 250.894
+      },
+      "latency_errors": {
+        "p50_ms": 0,
+        "p90_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 0,
+        "p99_9_ms": 0,
+        "max_ms": 0
+      },
+      "server": {
+        "http_orders_answered": {
+          "count": 8000,
+          "mean_ms": 2.056,
+          "p50_ms": 1.535,
+          "p99_ms": 8.036
+        },
+        "engine_total": {
+          "count": 8000,
+          "mean_ms": 1.93,
+          "p50_ms": 1.398,
+          "p99_ms": 7.398
+        },
+        "queue_wait": {
+          "count": 8000,
+          "mean_ms": 0.386,
+          "p50_ms": 0.026,
+          "p99_ms": 3.64
+        },
+        "durable_per_batch": {
+          "count": 7812,
+          "mean_ms": 1.447,
+          "p50_ms": 1.367,
+          "p99_ms": 2.594
+        },
+        "apply": {
+          "count": 8000,
+          "mean_ms": 0.033,
+          "p50_ms": 0.03,
+          "p99_ms": 0.124
+        },
+        "fsync": {
+          "count": 7812,
+          "mean_ms": 1.403,
+          "p50_ms": 1.326,
+          "p99_ms": 2.498
+        },
+        "batch_mean_commands": 1,
+        "refused_overloaded": 0,
+        "outcomes": {
+          "accepted": 6388,
+          "unknown_order": 1612
+        },
+        "cpu_cores": 0.35,
+        "max_queue_length": 5,
+        "queue_capacity": 1024,
+        "max_rss_mib": 77.2,
+        "max_goroutines": 117,
+        "max_projection_lag": 0,
+        "ws_slow_drops": 0
+      }
+    },
+    {
+      "name": "4: 800/s",
+      "offered_rate_per_s": 800,
+      "duration": "20s",
+      "arrivals": 16000,
+      "dropped": 0,
+      "sent": 16000,
+      "completed_rate_per_s": 800,
+      "by_status": {
+        "200": 12916,
+        "404": 3084
+      },
+      "answered": 16000,
+      "errors": 0,
+      "error_rate": 0,
+      "latency_answered": {
+        "p50_ms": 2.242,
+        "p90_ms": 4.253,
+        "p95_ms": 36.184,
+        "p99_ms": 50.195,
+        "p99_9_ms": 82.243,
+        "max_ms": 107.287
+      },
+      "latency_errors": {
+        "p50_ms": 0,
+        "p90_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 0,
+        "p99_9_ms": 0,
+        "max_ms": 0
+      },
+      "server": {
+        "http_orders_answered": {
+          "count": 15999,
+          "mean_ms": 5.077,
+          "p50_ms": 1.818,
+          "p99_ms": 49.852
+        },
+        "engine_total": {
+          "count": 15999,
+          "mean_ms": 4.977,
+          "p50_ms": 1.729,
+          "p99_ms": 49.765
+        },
+        "queue_wait": {
+          "count": 15999,
+          "mean_ms": 1.592,
+          "p50_ms": 0.417,
+          "p99_ms": 23.662
+        },
+        "durable_per_batch": {
+          "count": 13831,
+          "mean_ms": 1.361,
+          "p50_ms": 1.209,
+          "p99_ms": 1.986
+        },
+        "apply": {
+          "count": 15999,
+          "mean_ms": 0.019,
+          "p50_ms": 0.017,
+          "p99_ms": 0.09
+        },
+        "fsync": {
+          "count": 13830,
+          "mean_ms": 1.334,
+          "p50_ms": 1.188,
+          "p99_ms": 1.976
+        },
+        "batch_mean_commands": 1.2,
+        "refused_overloaded": 0,
+        "outcomes": {
+          "accepted": 12916,
+          "unknown_order": 3084
+        },
+        "cpu_cores": 0.43,
+        "max_queue_length": 13,
+        "queue_capacity": 1024,
+        "max_rss_mib": 89.7,
+        "max_goroutines": 143,
+        "max_projection_lag": 0,
+        "ws_slow_drops": 0
+      }
+    },
+    {
+      "name": "5: 1600/s",
+      "offered_rate_per_s": 1600,
+      "duration": "20s",
+      "arrivals": 32000,
+      "dropped": 0,
+      "sent": 32000,
+      "completed_rate_per_s": 1600,
+      "by_status": {
+        "200": 25647,
+        "404": 6353
+      },
+      "answered": 32000,
+      "errors": 0,
+      "error_rate": 0,
+      "latency_answered": {
+        "p50_ms": 2.046,
+        "p90_ms": 3.062,
+        "p95_ms": 3.73,
+        "p99_ms": 25.285,
+        "p99_9_ms": 123.758,
+        "max_ms": 217.376
+      },
+      "latency_errors": {
+        "p50_ms": 0,
+        "p90_ms": 0,
+        "p95_ms": 0,
+        "p99_ms": 0,
+        "p99_9_ms": 0,
+        "max_ms": 0
+      },
+      "server": {
+        "http_orders_answered": {
+          "count": 31999,
+          "mean_ms": 2.571,
+          "p50_ms": 1.974,
+          "p99_ms": 24.323
+        },
+        "engine_total": {
+          "count": 31999,
+          "mean_ms": 2.42,
+          "p50_ms": 1.902,
+          "p99_ms": 23.576
+        },
+        "queue_wait": {
+          "count": 32000,
+          "mean_ms": 0.932,
+          "p50_ms": 0.639,
+          "p99_ms": 10.336
+        },
+        "durable_per_batch": {
+          "count": 15845,
+          "mean_ms": 1.228,
+          "p50_ms": 1.168,
+          "p99_ms": 2.22
+        },
+        "apply": {
+          "count": 31999,
+          "mean_ms": 0.014,
+          "p50_ms": 0.009,
+          "p99_ms": 0.082
+        },
+        "fsync": {
+          "count": 15846,
+          "mean_ms": 1.201,
+          "p50_ms": 1.158,
+          "p99_ms": 1.994
+        },
+        "batch_mean_commands": 2,
+        "refused_overloaded": 0,
+        "outcomes": {
+          "accepted": 25645,
+          "unknown_order": 6353
+        },
+        "cpu_cores": 0.54,
+        "max_queue_length": 3,
+        "queue_capacity": 1024,
+        "max_rss_mib": 94.9,
+        "max_goroutines": 190,
+        "max_projection_lag": 0,
+        "ws_slow_drops": 0
+      }
+    },
+    {
+      "name": "6: 3200/s",
+      "offered_rate_per_s": 3200,
+      "duration": "20s",
+      "arrivals": 64000,
+      "dropped": 0,
+      "sent": 64000,
+      "completed_rate_per_s": 3099.1,
+      "by_status": {
+        "200": 49602,
+        "404": 12379,
+        "503": 2019
+      },
+      "answered": 61981,
+      "errors": 2019,
+      "error_rate": 0.0315,
+      "latency_answered": {
+        "p50_ms": 2.684,
+        "p90_ms": 4.357,
+        "p95_ms": 55.358,
+        "p99_ms": 757.508,
+        "p99_9_ms": 898.778,
+        "max_ms": 908.157
+      },
+      "latency_errors": {
+        "p50_ms": 0.449,
+        "p90_ms": 0.9,
+        "p95_ms": 1.095,
+        "p99_ms": 2.1,
+        "p99_9_ms": 8.655,
+        "max_ms": 10.532
+      },
+      "server": {
+        "http_orders_answered": {
+          "count": 61984,
+          "mean_ms": 25.308,
+          "p50_ms": 2.272,
+          "p99_ms": 769.405
+        },
+        "engine_total": {
+          "count": 61984,
+          "mean_ms": 25.157,
+          "p50_ms": 2.141,
+          "p99_ms": 769.405
+        },
+        "queue_wait": {
+          "count": 61982,
+          "mean_ms": 22.079,
+          "p50_ms": 0.768,
+          "p99_ms": 757.883
+        },
+        "durable_per_batch": {
+          "count": 13311,
+          "mean_ms": 1.432,
+          "p50_ms": 1.248,
+          "p99_ms": 2.778
+        },
+        "apply": {
+          "count": 61984,
+          "mean_ms": 0.013,
+          "p50_ms": 0.008,
+          "p99_ms": 0.084
+        },
+        "fsync": {
+          "count": 13311,
+          "mean_ms": 1.395,
+          "p50_ms": 1.215,
+          "p99_ms": 2.66
+        },
+        "batch_mean_commands": 4.7,
+        "refused_overloaded": 2019,
+        "outcomes": {
+          "accepted": 49605,
+          "unknown_order": 12379
+        },
+        "cpu_cores": 1.03,
+        "max_queue_length": 1024,
+        "queue_capacity": 1024,
+        "max_rss_mib": 170.9,
+        "max_goroutines": 2171,
+        "max_projection_lag": 0,
+        "ws_slow_drops": 0
+      }
+    }
+  ],
+  "cpu_profile": "cpu.pprof"
+}
