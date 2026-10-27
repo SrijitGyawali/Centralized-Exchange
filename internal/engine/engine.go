@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/book"
+	"github.com/SrijitGyawali/Centralized-Exchange/internal/clock"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/command"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/domain"
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/state"
@@ -28,6 +29,8 @@ type Config struct {
 	Journal Journal
 	// Hooks are test-only crash points; production leaves them nil.
 	Hooks Hooks
+	// Observer receives timings and outcomes (week 7). nil means none.
+	Observer Observer
 }
 
 // Journal is what the engine needs from durable storage, and nothing more.
@@ -82,9 +85,10 @@ const RecentTrades = 50
 // request is one item in the intake queue: either a command to sequence and
 // apply, or a read-only query to run against the state.
 type request struct {
-	cmd   command.Command
-	reply chan<- command.Result // buffered (capacity 1): the engine's send never blocks
-	query func(*state.State)    // set for queries; then cmd and reply are unused
+	cmd      command.Command
+	reply    chan<- command.Result // buffered (capacity 1): the engine's send never blocks
+	query    func(*state.State)    // set for queries; then cmd and reply are unused
+	admitted clock.Instant         // when enqueue accepted it; only for measurements
 }
 
 // Engine runs the single goroutine that owns all trading state (ADR-0001)
@@ -129,6 +133,9 @@ func New(st *state.State, cfg Config) *Engine {
 	}
 	if cfg.BatchSize <= 0 {
 		cfg.BatchSize = def.BatchSize
+	}
+	if cfg.Observer == nil {
+		cfg.Observer = nopObserver{}
 	}
 	e := &Engine{
 		st:     st,
@@ -200,8 +207,16 @@ func (e *Engine) handleBatch(batch []request) {
 			e.halt(fmt.Errorf("engine: panic at seq %d: %v", e.seq, r))
 		}
 	}()
+	// One clock reading for the whole batch: every request in it stopped
+	// waiting at the same moment, when the owner goroutine picked it up.
+	obs := e.cfg.Observer
+	picked := clock.Now()
+	for _, req := range batch {
+		obs.QueueWait(picked.Sub(req.admitted))
+	}
 	if batch[0].query != nil {
 		batch[0].query(e.st)
+		obs.Query(clock.Since(picked))
 		return
 	}
 	if e.cfg.Journal != nil {
@@ -212,10 +227,12 @@ func (e *Engine) handleBatch(batch []request) {
 				batch[i].cmd.Seq = e.seq
 				cmds[i] = batch[i].cmd
 			}
+			start := clock.Now()
 			if err := writer.AppendBatch(cmds); err != nil {
 				e.halt(fmt.Errorf("engine: journal batch ending seq %d: %w", e.seq, err))
 				return
 			}
+			obs.Durable(len(cmds), clock.Since(start))
 			for _, req := range batch {
 				if !e.apply(req) {
 					return
@@ -228,10 +245,12 @@ func (e *Engine) handleBatch(batch []request) {
 		e.seq++
 		req.cmd.Seq = e.seq
 		if e.cfg.Journal != nil {
+			start := clock.Now()
 			if err := e.cfg.Journal.Append(req.cmd); err != nil {
 				e.halt(fmt.Errorf("engine: journal append seq %d: %w", e.seq, err))
 				return
 			}
+			obs.Durable(1, clock.Since(start))
 		}
 		if !e.apply(req) {
 			return
@@ -240,6 +259,7 @@ func (e *Engine) handleBatch(batch []request) {
 }
 
 func (e *Engine) apply(req request) bool {
+	start := clock.Now()
 	fx, err := e.st.Apply(req.cmd)
 	if err != nil {
 		e.halt(fmt.Errorf("engine: apply seq %d: %w", req.cmd.Seq, err))
@@ -258,6 +278,9 @@ func (e *Engine) apply(req request) bool {
 		h(req.cmd.Seq)
 	}
 	req.reply <- fx.Result
+	done := clock.Now()
+	e.cfg.Observer.Applied(req.cmd.Body, fx.Result, done.Sub(start))
+	e.cfg.Observer.Completed(done.Sub(req.admitted))
 	return true
 }
 
@@ -299,6 +322,21 @@ func (e *Engine) Close() {
 
 // Done is closed when Run has returned.
 func (e *Engine) Done() <-chan struct{} { return e.done }
+
+// QueueLen is how many admitted requests are waiting for the owner goroutine
+// right now, and QueueCap how many may wait. Together they are the engine's
+// saturation signal: a queue that stays near full means requests are arriving
+// faster than the engine can make them durable and apply them. len and cap
+// of a channel are safe to read from any goroutine.
+func (e *Engine) QueueLen() int { return len(e.intake) }
+
+// QueueCap returns the intake queue's capacity (Config.QueueSize).
+func (e *Engine) QueueCap() int { return cap(e.intake) }
+
+// BatchLimit returns the most commands one durable append may carry
+// (Config.BatchSize). The config never changes after New, so reading it from
+// any goroutine is safe.
+func (e *Engine) BatchLimit() int { return e.cfg.BatchSize }
 
 // Err returns why the engine halted, or nil if it is running normally.
 func (e *Engine) Err() error {
