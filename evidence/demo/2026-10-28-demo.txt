@@ -1,0 +1,71 @@
+Demo transcript: `go run ./tests/demo` (make demo)
+Recorded 2026-10-28T05:40:33Z from commit bff76a457c70, go1.26.10 windows/amd64, Windows 11 laptop (Intel i7-1165G7, NVMe SSD).
+Timings and digests differ between runs; the story, the checks and the outcome do not.
+
+
+[0:00] Scope
+------------
+  A simulated BTC/USDT spot exchange in Go. One goroutine owns all trading state;
+  every command is written to a journal and fsynced BEFORE it is applied and answered;
+  money is exact integers in a double-entry ledger. Paper trading only.
+  cexd is running on a fresh data directory: C:\Users\APTOS\AppData\Local\Temp\cex-demo-2251162980\data
+
+[0:30] Matching, explained
+--------------------------
+  Funded: alice 100,000 USDT; bob and carol 1 BTC each.
+  bob   sells 0.1 BTC at 60000 -> order 1 rested (seq 4)
+  carol sells 0.1 BTC at 60000 -> order 2 rested (seq 5)
+  bob   sells 0.1 BTC at 59900 -> order 3 rested (seq 6)
+  alice buys 0.25 BTC, limit 60050 -> order 4 filled with 3 fills (seq 7)
+  The replay inspector recomputes that order from the journal alone:
+    | order      4 (BTC-USDT)
+    | rules      Tier 1, journal format v1: price-time priority (best price, then lowest Seq), fills at the maker's price, self-trade stops matching and cancels the taker's remainder
+    | request    seq 7, user 1, key "alice-1": buy 0.2500 BTC limit 60050, GTC
+    | reserve    15012.500000 USDT at the limit price
+    |            before: BTC 0.0000 available, 0.0000 reserved; USDT 100000.000000 available, 0.000000 reserved
+    |            after:  BTC 0.2500 available, 0.0000 reserved; USDT 85010.000000 available, 0.000000 reserved
+    | matching   3 fill(s), in priority order (best price first; at one price, the oldest order first):
+    |   1. 0.1000 BTC @ 59900 against order 3 (user 2, resting since seq 6), 150 USDT better than the limit
+    |   2. 0.1000 BTC @ 60000 against order 1 (user 2, resting since seq 4), 50 USDT better than the limit
+    |   3. 0.0500 BTC @ 60000 against order 2 (user 3, resting since seq 5), 50 USDT better than the limit
+    | outcome    filled; 0.0000 BTC remaining
+    | status     filled completely
+    | ledger     every posting about order 4 (each journal sums to zero per asset)
+    |   seq 7 #0 reservation user 1 available USDT -15012.500000; user 1 reserved USDT +15012.500000
+    |   seq 7 #1 settlement  user 1 reserved USDT -5990.000000; user 2 available USDT +5990.000000; user 2 reserved BTC -0.1000; user 1 available BTC +0.1000
+    |   seq 7 #2 settlement  user 1 reserved USDT -6000.000000; user 2 available USDT +6000.000000; user 2 reserved BTC -0.1000; user 1 available BTC +0.1000
+    |   seq 7 #3 settlement  user 1 reserved USDT -3000.000000; user 3 available USDT +3000.000000; user 3 reserved BTC -0.0500; user 1 available BTC +0.0500
+    |   seq 7 #4 release     user 1 reserved USDT -22.500000; user 1 available USDT +22.500000
+    | state      seq 7, invariants ok
+    | digest     bf06695319597432b457dbc49f9e50088216d3edf322cfcccf2957043bba3385
+  Price first (59900 before 60000), then time (bob's older order before carol's),
+  every fill at the MAKER's price, and the unused reservation released at the end.
+
+[1:15] A lost response, a crash, and a retry
+--------------------------------------------
+  alice places another order (key alice-2). Pretend the reply was LOST on the network:
+  she does not know whether it happened. Now the server is killed, hard (kill -9).
+  Restarted: replayed 8 commands from the journal in 1.0882ms, digest 2ce6597904ad3172...
+  alice retries with the SAME key: duplicate=true, seq 8, order 5 (the original: seq 8, order 5)
+  Exactly one effect: alice's USDT reserved is 2950.000000 (one 0.05 BTC order at 59000 = 2950 USDT).
+
+[2:00] Where the time goes
+--------------------------
+  A short burst: 400 orders from 16 concurrent clients (IOC buys at 50000: nothing to
+  match, so each one reserves USDT and releases it again, a full journaled command).
+  HTTP (every request)                   mean    2.284 ms over 403
+  engine total                           mean    2.128 ms over 401
+    queue wait                           mean    0.778 ms over 402
+    durable: write + fsync (per batch)   mean    1.347 ms over 56
+    apply: the state machine             mean    0.004 ms over 401
+  group commit                           mean      7.2 commands per fsync
+  Durability dominates: the engine waits on fsync. Under load, group commit shares one
+  fsync between queued commands: 3200 orders/s at a 2.4 ms median on this kind of laptop,
+  where one fsync per order saturates near 750/s (docs/PERFORMANCE.md).
+
+[2:40] Limits, and the next decision
+------------------------------------
+  One symbol, one process: a machine loss needs replication, which is not built.
+  The latency tail is the disk's rare 100 ms-1 s fsyncs; memory grows ~370 B per command
+  because every idempotency key is kept. Next: snapshots and dedupe expiry, then replication.
+  Everything else: docs/LIMITATIONS.md.
