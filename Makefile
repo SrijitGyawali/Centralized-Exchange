@@ -10,7 +10,7 @@ COMPOSE := docker compose -f deploy/docker-compose.yml
 LDFLAGS := -X main.version=$(VERSION)
 
 .DEFAULT_GOAL := help
-.PHONY: help build run test race vet fmt fmt-check cover tidy check clean test-integration db-up db-down up down logs load-tokens load-smoke load-step vuln
+.PHONY: help build run test race vet fmt fmt-check cover tidy check clean test-integration db-up db-down up down logs load-tokens load-smoke load-step vuln demo drills
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-17s %s\n", $$1, $$2}'
@@ -77,6 +77,12 @@ load-step: ## The step-to-saturation experiment; results in tmp/load-step (copy 
 
 vuln: ## Check dependencies for known vulnerabilities (what CI runs)
 	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+demo: ## The three-minute demonstration, narrated (docs/DEMO.md)
+	go run ./tests/demo
+
+drills: ## Crash, retry, money, restore and recovery-time drills; report in tmp/drills (about 5 minutes)
+	go run ./tests/drills -out tmp/drills
 
 clean: ## Remove build and test output
 	rm -rf bin tmp coverage.out
