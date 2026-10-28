@@ -1,0 +1,69 @@
+Quick start on a clean machine
+Run 2026-10-28T05:54:04Z in a fresh container: golang@sha256:750c2fbc7cf8514249eaec73844b5ea96e32760b31adde66e1c93ac2fedc8166
+Host: Windows 11 laptop with Docker Desktop. Nothing from the host is mounted; the repository is cloned from GitHub.
+
+container: "Debian GNU/Linux 13 (trixie)" | go version go1.26.10 linux/amd64 | git version 2.47.3 | GNU Make 4.4.1
+
+$ git clone https://github.com/SrijitGyawali/Centralized-Exchange.git
+cloned 146eafa docs(readme): the v0.1.0 front page
+
+$ make check
+go: downloading golang.org/x/crypto v0.55.0
+go: downloading github.com/spf13/cast v1.10.0
+go: downloading golang.org/x/sys v0.48.0
+go: downloading golang.org/x/sync v0.23.0
+go: downloading github.com/mitchellh/reflectwalk v1.0.2
+go test -race ./...
+ok  	github.com/SrijitGyawali/Centralized-Exchange/cmd/cexd	4.436s
+ok  	github.com/SrijitGyawali/Centralized-Exchange/cmd/loadgen	5.405s
+ok  	github.com/SrijitGyawali/Centralized-Exchange/cmd/replay	1.409s
+ok  	github.com/SrijitGyawali/Centralized-Exchange/internal/api	1.082s
+ok  	github.com/SrijitGyawali/Centralized-Exchange/internal/book	1.484s
+ok  	github.com/SrijitGyawali/Centralized-Exchange/internal/clock	1.090s
+ok  	github.com/SrijitGyawali/Centralized-Exchange/internal/command	1.037s
+ok  	github.com/SrijitGyawali/Centralized-Exchange/internal/config	1.081s
+ok  	github.com/SrijitGyawali/Centralized-Exchange/internal/domain	1.356s
+ok  	github.com/SrijitGyawali/Centralized-Exchange/internal/engine	1.182s
+ok  	github.com/SrijitGyawali/Centralized-Exchange/internal/journal	2.190s
+ok  	github.com/SrijitGyawali/Centralized-Exchange/internal/marketdata	1.741s
+ok  	github.com/SrijitGyawali/Centralized-Exchange/internal/node	1.107s
+ok  	github.com/SrijitGyawali/Centralized-Exchange/internal/projector	1.041s
+ok  	github.com/SrijitGyawali/Centralized-Exchange/internal/state	6.667s
+ok  	github.com/SrijitGyawali/Centralized-Exchange/internal/telemetry	1.162s
+ok  	github.com/SrijitGyawali/Centralized-Exchange/internal/webui	1.053s
+ok  	github.com/SrijitGyawali/Centralized-Exchange/tests/crash	3.798s
+make check exit: 0
+
+$ make run & ; curl localhost:8080/healthz ; curl localhost:8080/readyz
+ok
+ready
+
+$ make demo
+    queue wait                           mean    2.336 ms over 402
+    durable: write + fsync (per batch)   mean    2.960 ms over 51
+    apply: the state machine             mean    0.005 ms over 401
+  group commit                           mean      7.9 commands per fsync
+  Durability dominates: the engine waits on fsync. Under load, group commit shares one
+  fsync between queued commands: 3200 orders/s at a 2.4 ms median on this kind of laptop,
+  where one fsync per order saturates near 750/s (docs/PERFORMANCE.md).
+
+[2:40] Limits, and the next decision
+------------------------------------
+  One symbol, one process: a machine loss needs replication, which is not built.
+  The latency tail is the disk's rare 100 ms-1 s fsyncs; memory grows ~370 B per command
+  because every idempotency key is kept. Next: snapshots and dedupe expiry, then replication.
+  Everything else: docs/LIMITATIONS.md.
+make demo exit: 0
+
+$ go run ./tests/drills -out /tmp/drills -crash-rounds 1 -sizes ""
+== crash drill
+   round 1: killed after 3014 ms; 13477 requests (13445 answered, 0 refused, 32 unknown); recovered 13492 commands (torn 0 B) in 66.2099ms, ready in 77 ms
+== restore drill
+   hot copy: 438550 bytes, restored to seq 8538 of 14747 (torn 0 B cut), 8506 answers kept, 6194 after the copy point lost, prefix true, digest match true
+   cold copy: 757445 bytes, restored to seq 14747 of 14747 (torn 0 B cut), 14700 answers kept, 0 after the copy point lost, prefix true, digest match true
+all drills passed; report in /tmp/drills/report.md
+drills exit: 0
+
+$ go run ./tests/week5
+week5 process gate passed: funding, matching, queries, ownership, cancellation, crash recovery and idempotent retries
+week5 exit: 0
