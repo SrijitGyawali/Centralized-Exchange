@@ -1,0 +1,18 @@
+{"time":"2026-10-28T11:22:46.0748024+05:45","level":"INFO","msg":"starting cexd","version":"dev","http_addr":"127.0.0.1:62428","data_dir":"C:\\Users\\APTOS\\AppData\\Local\\Temp\\cex-drills-1388421057\\crash-data"}
+{"time":"2026-10-28T11:22:46.0761396+05:45","level":"INFO","msg":"recovered","commands":0,"last_seq":0,"truncated_bytes":0,"digest":"02cdb359658ba004909e2dfc4613d0efcae6cf859b079fe419bb1d597313a588","took":"759.9µs"}
+{"time":"2026-10-28T11:22:46.0773717+05:45","level":"INFO","msg":"http listening","addr":"127.0.0.1:62428"}
+{"time":"2026-10-28T11:22:49.5443691+05:45","level":"INFO","msg":"starting cexd","version":"dev","http_addr":"127.0.0.1:62504","data_dir":"C:\\Users\\APTOS\\AppData\\Local\\Temp\\cex-drills-1388421057\\crash-data"}
+{"time":"2026-10-28T11:22:49.6861908+05:45","level":"INFO","msg":"recovered","commands":34541,"last_seq":34541,"truncated_bytes":0,"digest":"843604484c20512a460f0bb5f9e0c016bd45e570e56e19675b52d535615734d3","took":"139.9404ms"}
+{"time":"2026-10-28T11:22:49.6877092+05:45","level":"INFO","msg":"http listening","addr":"127.0.0.1:62504"}
+{"time":"2026-10-28T11:22:53.1208316+05:45","level":"INFO","msg":"starting cexd","version":"dev","http_addr":"127.0.0.1:62598","data_dir":"C:\\Users\\APTOS\\AppData\\Local\\Temp\\cex-drills-1388421057\\crash-data"}
+{"time":"2026-10-28T11:22:53.400929+05:45","level":"INFO","msg":"recovered","commands":57123,"last_seq":57123,"truncated_bytes":0,"digest":"e06d565bf67c74f4bce5d11fe8e26aab7691240f8c2b63625aa2bf85d16b7d53","took":"279.5113ms"}
+{"time":"2026-10-28T11:22:53.4020177+05:45","level":"INFO","msg":"http listening","addr":"127.0.0.1:62598"}
+{"time":"2026-10-28T11:22:58.1603038+05:45","level":"INFO","msg":"starting cexd","version":"dev","http_addr":"127.0.0.1:62723","data_dir":"C:\\Users\\APTOS\\AppData\\Local\\Temp\\cex-drills-1388421057\\crash-data"}
+{"time":"2026-10-28T11:22:58.6524853+05:45","level":"INFO","msg":"recovered","commands":93215,"last_seq":93215,"truncated_bytes":0,"digest":"e4ec75993786e333debe3e2d5f923f6af9e16d82519d5b098b4748ee03eb5863","took":"490.6288ms"}
+{"time":"2026-10-28T11:22:58.6533872+05:45","level":"INFO","msg":"http listening","addr":"127.0.0.1:62723"}
+{"time":"2026-10-28T11:23:06.4286932+05:45","level":"INFO","msg":"starting cexd","version":"dev","http_addr":"127.0.0.1:62909","data_dir":"C:\\Users\\APTOS\\AppData\\Local\\Temp\\cex-drills-1388421057\\crash-data"}
+{"time":"2026-10-28T11:23:07.1435722+05:45","level":"INFO","msg":"recovered","commands":120203,"last_seq":120203,"truncated_bytes":0,"digest":"83bac9556397b54f1a26baeb631ea7e318c3ba4f6a5e2496d657c7a1e3fbc65e","took":"713.8531ms"}
+{"time":"2026-10-28T11:23:07.1455678+05:45","level":"INFO","msg":"http listening","addr":"127.0.0.1:62909"}
+{"time":"2026-10-28T11:23:12.3474229+05:45","level":"INFO","msg":"starting cexd","version":"dev","http_addr":"127.0.0.1:63117","data_dir":"C:\\Users\\APTOS\\AppData\\Local\\Temp\\cex-drills-1388421057\\crash-data"}
+{"time":"2026-10-28T11:23:13.2544474+05:45","level":"INFO","msg":"recovered","commands":129539,"last_seq":129539,"truncated_bytes":0,"digest":"742a64571c31e9d03c7f0883c95e590aa5c290835c958ddbedc6a3a731a0d831","took":"905.9455ms"}
+{"time":"2026-10-28T11:23:13.2564+05:45","level":"INFO","msg":"http listening","addr":"127.0.0.1:63117"}

@@ -1,0 +1,305 @@
+{
+  "started_at": "2026-10-28T05:37:42Z",
+  "git_commit": "bff76a457c70",
+  "os": "windows/amd64",
+  "logical_cpus": 8,
+  "go": "go1.26.10",
+  "crash_rounds": [
+    {
+      "round": 1,
+      "traffic_before_kill_ms": 3014,
+      "requests": 34541,
+      "answered": 34498,
+      "refused": 0,
+      "unknown_outcome": 43,
+      "offline_audit_after_kill": {
+        "frames": 34541,
+        "last_seq": 34541,
+        "valid_bytes": 1601311,
+        "torn_bytes": 0,
+        "invariants": "ok",
+        "digest": "843604484c20512a460f0bb5f9e0c016bd45e570e56e19675b52d535615734d3",
+        "issued_usdt_atoms": 160000000000000,
+        "issued_btc_lots": 1600000000,
+        "sum_user_usdt_atoms": 160000000000000,
+        "sum_user_btc_lots": 1600000000,
+        "conserved": true
+      },
+      "restart_recovery": {
+        "commands": 34541,
+        "last_seq": 34541,
+        "truncated_bytes": 0,
+        "digest": "843604484c20512a460f0bb5f9e0c016bd45e570e56e19675b52d535615734d3",
+        "took": "139.9404ms"
+      },
+      "restart_ready_ms": 159,
+      "answered_found_unchanged": 34498,
+      "refused_confirmed_never_ran": 0,
+      "unknown_already_done_before_crash": 11,
+      "unknown_executed_by_retry": 32,
+      "unknown_exactly_once": 43
+    },
+    {
+      "round": 2,
+      "traffic_before_kill_ms": 2004,
+      "requests": 22515,
+      "answered": 22483,
+      "refused": 0,
+      "unknown_outcome": 32,
+      "offline_audit_after_kill": {
+        "frames": 57123,
+        "last_seq": 57123,
+        "valid_bytes": 2652847,
+        "torn_bytes": 0,
+        "invariants": "ok",
+        "digest": "e06d565bf67c74f4bce5d11fe8e26aab7691240f8c2b63625aa2bf85d16b7d53",
+        "issued_usdt_atoms": 160000000000000,
+        "issued_btc_lots": 1600000000,
+        "sum_user_usdt_atoms": 160000000000000,
+        "sum_user_btc_lots": 1600000000,
+        "conserved": true
+      },
+      "restart_recovery": {
+        "commands": 57123,
+        "last_seq": 57123,
+        "truncated_bytes": 0,
+        "digest": "e06d565bf67c74f4bce5d11fe8e26aab7691240f8c2b63625aa2bf85d16b7d53",
+        "took": "279.5113ms"
+      },
+      "restart_ready_ms": 298,
+      "answered_found_unchanged": 22483,
+      "refused_confirmed_never_ran": 0,
+      "unknown_already_done_before_crash": 13,
+      "unknown_executed_by_retry": 19,
+      "unknown_exactly_once": 32
+    },
+    {
+      "round": 3,
+      "traffic_before_kill_ms": 3400,
+      "requests": 36052,
+      "answered": 36011,
+      "refused": 0,
+      "unknown_outcome": 41,
+      "offline_audit_after_kill": {
+        "frames": 93215,
+        "last_seq": 93215,
+        "valid_bytes": 4332971,
+        "torn_bytes": 0,
+        "invariants": "ok",
+        "digest": "e4ec75993786e333debe3e2d5f923f6af9e16d82519d5b098b4748ee03eb5863",
+        "issued_usdt_atoms": 160000000000000,
+        "issued_btc_lots": 1600000000,
+        "sum_user_usdt_atoms": 160000000000000,
+        "sum_user_btc_lots": 1600000000,
+        "conserved": true
+      },
+      "restart_recovery": {
+        "commands": 93215,
+        "last_seq": 93215,
+        "truncated_bytes": 0,
+        "digest": "e4ec75993786e333debe3e2d5f923f6af9e16d82519d5b098b4748ee03eb5863",
+        "took": "490.6288ms"
+      },
+      "restart_ready_ms": 514,
+      "answered_found_unchanged": 36011,
+      "refused_confirmed_never_ran": 0,
+      "unknown_already_done_before_crash": 17,
+      "unknown_executed_by_retry": 24,
+      "unknown_exactly_once": 41
+    },
+    {
+      "round": 4,
+      "traffic_before_kill_ms": 3426,
+      "requests": 26952,
+      "answered": 26888,
+      "refused": 0,
+      "unknown_outcome": 64,
+      "offline_audit_after_kill": {
+        "frames": 120203,
+        "last_seq": 120203,
+        "valid_bytes": 5589220,
+        "torn_bytes": 0,
+        "invariants": "ok",
+        "digest": "83bac9556397b54f1a26baeb631ea7e318c3ba4f6a5e2496d657c7a1e3fbc65e",
+        "issued_usdt_atoms": 160000000000000,
+        "issued_btc_lots": 1600000000,
+        "sum_user_usdt_atoms": 160000000000000,
+        "sum_user_btc_lots": 1600000000,
+        "conserved": true
+      },
+      "restart_recovery": {
+        "commands": 120203,
+        "last_seq": 120203,
+        "truncated_bytes": 0,
+        "digest": "83bac9556397b54f1a26baeb631ea7e318c3ba4f6a5e2496d657c7a1e3fbc65e",
+        "took": "713.8531ms"
+      },
+      "restart_ready_ms": 735,
+      "answered_found_unchanged": 26888,
+      "refused_confirmed_never_ran": 0,
+      "unknown_already_done_before_crash": 18,
+      "unknown_executed_by_retry": 46,
+      "unknown_exactly_once": 64
+    },
+    {
+      "round": 5,
+      "traffic_before_kill_ms": 1518,
+      "requests": 9236,
+      "answered": 9183,
+      "refused": 0,
+      "unknown_outcome": 53,
+      "offline_audit_after_kill": {
+        "frames": 129539,
+        "last_seq": 129539,
+        "valid_bytes": 6023973,
+        "torn_bytes": 0,
+        "invariants": "ok",
+        "digest": "742a64571c31e9d03c7f0883c95e590aa5c290835c958ddbedc6a3a731a0d831",
+        "issued_usdt_atoms": 160000000000000,
+        "issued_btc_lots": 1600000000,
+        "sum_user_usdt_atoms": 160000000000000,
+        "sum_user_btc_lots": 1600000000,
+        "conserved": true
+      },
+      "restart_recovery": {
+        "commands": 129539,
+        "last_seq": 129539,
+        "truncated_bytes": 0,
+        "digest": "742a64571c31e9d03c7f0883c95e590aa5c290835c958ddbedc6a3a731a0d831",
+        "took": "905.9455ms"
+      },
+      "restart_ready_ms": 932,
+      "answered_found_unchanged": 9183,
+      "refused_confirmed_never_ran": 0,
+      "unknown_already_done_before_crash": 25,
+      "unknown_executed_by_retry": 28,
+      "unknown_exactly_once": 53
+    }
+  ],
+  "restores": [
+    {
+      "kind": "hot",
+      "copied_bytes": 841974,
+      "copy_taken_after_ms": 2018,
+      "traffic_total_ms": 3534,
+      "original": {
+        "frames": 30742,
+        "last_seq": 30742,
+        "valid_bytes": 1578788,
+        "torn_bytes": 0,
+        "invariants": "ok",
+        "digest": "540fddf1a2ab6b10396f3938e9d5138ae1c7828e7efc4e11cc67fbbee764577a",
+        "issued_usdt_atoms": 160000000000000,
+        "issued_btc_lots": 1600000000,
+        "sum_user_usdt_atoms": 160000000000000,
+        "sum_user_btc_lots": 1600000000,
+        "conserved": true
+      },
+      "copy_offline_audit": {
+        "frames": 16393,
+        "last_seq": 16393,
+        "valid_bytes": 841974,
+        "torn_bytes": 0,
+        "invariants": "ok",
+        "digest": "c09157eed8e2acad9f1c5a06b911084c5e17f326ac5d9e940c08699cd778dbce",
+        "issued_usdt_atoms": 160000000000000,
+        "issued_btc_lots": 1600000000,
+        "sum_user_usdt_atoms": 160000000000000,
+        "sum_user_btc_lots": 1600000000,
+        "conserved": true
+      },
+      "copy_is_exact_prefix": true,
+      "restored_recovery": {
+        "commands": 16393,
+        "last_seq": 16393,
+        "truncated_bytes": 0,
+        "digest": "c09157eed8e2acad9f1c5a06b911084c5e17f326ac5d9e940c08699cd778dbce",
+        "took": "69.7367ms"
+      },
+      "digest_equals_original_at_same_seq": true,
+      "answered_up_to_restored_seq_found": 16361,
+      "answered_after_restored_seq_lost": 14323,
+      "answered_lost_although_in_copy": 0
+    },
+    {
+      "kind": "cold",
+      "copied_bytes": 1578788,
+      "copy_taken_after_ms": 3534,
+      "traffic_total_ms": 3534,
+      "original": {
+        "frames": 30742,
+        "last_seq": 30742,
+        "valid_bytes": 1578788,
+        "torn_bytes": 0,
+        "invariants": "ok",
+        "digest": "540fddf1a2ab6b10396f3938e9d5138ae1c7828e7efc4e11cc67fbbee764577a",
+        "issued_usdt_atoms": 160000000000000,
+        "issued_btc_lots": 1600000000,
+        "sum_user_usdt_atoms": 160000000000000,
+        "sum_user_btc_lots": 1600000000,
+        "conserved": true
+      },
+      "copy_offline_audit": {
+        "frames": 30742,
+        "last_seq": 30742,
+        "valid_bytes": 1578788,
+        "torn_bytes": 0,
+        "invariants": "ok",
+        "digest": "540fddf1a2ab6b10396f3938e9d5138ae1c7828e7efc4e11cc67fbbee764577a",
+        "issued_usdt_atoms": 160000000000000,
+        "issued_btc_lots": 1600000000,
+        "sum_user_usdt_atoms": 160000000000000,
+        "sum_user_btc_lots": 1600000000,
+        "conserved": true
+      },
+      "copy_is_exact_prefix": true,
+      "restored_recovery": {
+        "commands": 30742,
+        "last_seq": 30742,
+        "truncated_bytes": 0,
+        "digest": "540fddf1a2ab6b10396f3938e9d5138ae1c7828e7efc4e11cc67fbbee764577a",
+        "took": "286.37ms"
+      },
+      "digest_equals_original_at_same_seq": true,
+      "answered_up_to_restored_seq_found": 30684,
+      "answered_after_restored_seq_lost": 0,
+      "answered_lost_although_in_copy": 0
+    }
+  ],
+  "recovery": [
+    {
+      "commands": 100000,
+      "journal_bytes": 4447057,
+      "generate_seconds": 3.5284907,
+      "recoveries": [
+        "1.167s",
+        "1.239s",
+        "1.203s"
+      ],
+      "recovery_median": "1.203s",
+      "replay_commands_per_second": 83135.8786934465,
+      "heap_in_use_after_recovery_mib": 36.5234375
+    },
+    {
+      "commands": 1000000,
+      "journal_bytes": 44538428,
+      "generate_seconds": 33.6295082,
+      "recoveries": [
+        "8.006s",
+        "8.631s",
+        "7.92s"
+      ],
+      "recovery_median": "8.006s",
+      "replay_commands_per_second": 124902.99564971609,
+      "heap_in_use_after_recovery_mib": 431.6171875
+    }
+  ],
+  "failures": null,
+  "settings": {
+    "crash_rounds": 5,
+    "clients": 32,
+    "users": 16,
+    "seed": 1,
+    "recovery_sizes": "100000,1000000"
+  }
+}

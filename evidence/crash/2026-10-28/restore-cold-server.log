@@ -1,0 +1,3 @@
+{"time":"2026-10-28T11:23:19.8064711+05:45","level":"INFO","msg":"starting cexd","version":"dev","http_addr":"127.0.0.1:63382","data_dir":"C:\\Users\\APTOS\\AppData\\Local\\Temp\\cex-drills-1388421057\\restore-cold"}
+{"time":"2026-10-28T11:23:20.0944393+05:45","level":"INFO","msg":"recovered","commands":30742,"last_seq":30742,"truncated_bytes":0,"digest":"540fddf1a2ab6b10396f3938e9d5138ae1c7828e7efc4e11cc67fbbee764577a","took":"286.37ms"}
+{"time":"2026-10-28T11:23:20.096446+05:45","level":"INFO","msg":"http listening","addr":"127.0.0.1:63382"}
