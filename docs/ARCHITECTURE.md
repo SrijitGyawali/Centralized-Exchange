@@ -6,7 +6,7 @@ directory or package owns each responsibility. It explains the *why* behind
 the repository layout. Detailed decisions live in [ADRs](adr/), and the full
 roadmap is in the [master plan](plan/CEX_Go_Guided_Master_Plan.md).
 
-> Status: weeks 1-7 implemented (week 7: Prometheus metrics, private admin port with pprof, load generator, Docker Compose stack, Grafana dashboards). Each section notes the week it was built.
+> Status: Tier 1 complete, released as v0.1.0 (weeks 1-8). Week 8 added the replay inspector's -explain, the drills and the demo; see [RELEASE.md](RELEASE.md) and [LIMITATIONS.md](LIMITATIONS.md). Each section notes the week it was built.
 
 ---
 
@@ -84,7 +84,7 @@ Key ideas:
 | Projector | `internal/projector` | Follows `journal.wal` read-only, replays it through a private `state.State`, writes commands/orders/trades/ledger/balances plus the checkpoint in ONE transaction (checkpoint row locked first), reconciles at the same Seq. See ADR-0009 | 6 |
 | Config | `internal/config` | Reads environment variables into a typed, validated `Config` | 1 |
 | Server binary | `cmd/cexd` | Composition root: builds every component, wires them, runs, shuts down gracefully | 1 |
-| Replay CLI | `cmd/replay` | Offline replay to a chosen sequence, state digest, "explain order" | 4, 8 |
+| Replay CLI | `cmd/replay` | Offline, read-only replay to a chosen sequence, state digest; `-explain <order>` (request, reservation, fills in priority order with each maker's Seq, outcome, later events, every ledger posting) and `-explain-seq <seq>` | 4, 8 |
 | Telemetry | `internal/telemetry` | The ONLY importer of the Prometheus client. Turns the engine Observer, journal OnSync, hub Stats, projector Status and API route names into metrics; HTTP middleware; served on the private admin port. See ADR-0011 | 7 |
 | Clock | `internal/clock` | High-resolution monotonic clock for measuring (QueryPerformanceCounter on Windows, where `time.Now` ticks every ~0.5 ms). Never used by the state machine | 7 |
 | Load generator | `cmd/loadgen` | Open-model workloads from versioned JSON, exact client percentiles, per-stage server attribution from `/metrics`, raw results. See ADR-0012 | 7 |
@@ -165,7 +165,7 @@ Planned PostgreSQL tables (week 6): `orders`, `trades`, `ledger_journals`,
 │   ├── telemetry/            #   Prometheus metrics (the only importer of the client)
 │   ├── clock/                #   High-resolution clock for measuring durations
 │   └── config/               #   Startup configuration
-├── tests/                    # Cross-package tests: crash harness, end-to-end, recovery
+├── tests/                    # Cross-package: crash harness (crash/), HTTP gate (week5/), drills (drills/), demo (demo/)
 ├── loadtest/                 # Versioned workloads (JSON) and the outage drill (week 7)
 ├── deploy/                   # Dockerfile, docker-compose, Prometheus, Grafana (week 7)
 ├── labs/                     # Small Go runtime experiments (scheduler, GC, escape analysis…)
@@ -283,4 +283,4 @@ replication.
 | 5 | `api` endpoints, auth, group commit |
 | 6 | `projector` + PostgreSQL, `marketdata` WebSocket, minimal UI |
 | 7 | ✅ `telemetry`, `clock`, `cmd/loadgen`, `loadtest/`, `deploy/` (Compose, Prometheus, Grafana), profiles and load results in `evidence/` |
-| 8 | inspector polish, docs, v0.1 tag |
+| 8 | ✅ `replay -explain`, `tests/drills` (crash, retry, money, restore, recovery time), `tests/demo`, LIMITATIONS, DEMO, RELEASE, tag `v0.1.0` |
