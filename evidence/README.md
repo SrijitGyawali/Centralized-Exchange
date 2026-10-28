@@ -11,8 +11,13 @@ commit or release it came from.
   week-7 report that interprets them is [docs/PERFORMANCE.md](../docs/PERFORMANCE.md).
 - `profiles/`: CPU/alloc profiles and execution traces, with a note on what
   they showed and what was changed because of it
-- `crash/`: crash-drill reports
-- `demo/`: recordings and the 3-minute demo script
+- `crash/`: drill reports from `tests/drills`: hard kills under load with
+  lookups and retries, money checks, hot and cold restores, recovery time
+  at 100k and 1M commands, plus the servers' own logs
+- `demo/`: transcripts of `tests/demo` (the spoken script is
+  [docs/DEMO.md](../docs/DEMO.md))
+- `quickstart/`: the README quick start, run on a clean machine (a fresh
+  container cloning the repository from GitHub)
 
 Never edit a result by hand. Re-run and commit the new output. A run made
 from uncommitted code says `-dirty` in its git commit and does not belong
