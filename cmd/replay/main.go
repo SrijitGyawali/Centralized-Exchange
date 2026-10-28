@@ -4,6 +4,8 @@
 //
 //	replay -data-dir ./data              # replay everything
 //	replay -data-dir ./data -to-seq 6    # the state as it was right after seq 6
+//	replay -data-dir ./data -explain 3   # the life of order 3, request to ledger
+//	replay -data-dir ./data -explain-seq 5  # one command: request, result, postings
 //
 // It prints the journal's health (frames, any torn tail), whether every
 // invariant holds, the state digest (compare it with the "digest" the
@@ -11,7 +13,10 @@
 //
 // It never opens a network port and never touches a running server, so it
 // is safe to run against a COPY of production data during an incident.
-// Tracing a single order ("-explain") arrives in week 8.
+//
+// -explain and -explain-seq (week 8) recompute everything from the journal
+// with the same state.Apply the server ran (explain.go): nothing comes from
+// logs or SQL, so the explanation is exactly what the exchange decided.
 package main
 
 import (
@@ -43,12 +48,10 @@ func run(args []string, out io.Writer) error {
 	fs := flag.NewFlagSet("replay", flag.ContinueOnError)
 	dataDir := fs.String("data-dir", "./data", "directory containing "+journal.FileName)
 	toSeq := fs.Uint64("to-seq", 0, "stop after this sequence (0 = replay everything)")
-	explain := fs.Uint64("explain", 0, "order ID to explain (arrives in week 8)")
+	explain := fs.Uint64("explain", 0, "order ID to trace from request to ledger postings")
+	explainSeq := fs.Uint64("explain-seq", 0, "command Seq to show: request, result, ledger postings")
 	if err := fs.Parse(args); err != nil {
 		return err
-	}
-	if *explain != 0 {
-		return errors.New("-explain arrives in week 8")
 	}
 
 	path := filepath.Join(*dataDir, journal.FileName)
@@ -59,16 +62,35 @@ func run(args []string, out io.Writer) error {
 	defer f.Close()
 
 	st := state.New()
+	t := newTracer(*explain, *explainSeq)
 	res, err := journal.Scan(f, func(c command.Command) error {
 		if *toSeq != 0 && uint64(c.Seq) > *toSeq {
 			return errStop
 		}
-		_, err := st.Apply(c)
-		return err
+		return t.apply(st, c)
 	})
 	stopped := errors.Is(err, errStop)
 	if err != nil && !stopped {
 		return err
+	}
+
+	if *explain != 0 || *explainSeq != 0 {
+		if *explain != 0 {
+			if err := t.explainOrder(out, st); err != nil {
+				return err
+			}
+		}
+		if *explainSeq != 0 {
+			if err := t.explainSeq(out); err != nil {
+				return err
+			}
+		}
+		invariants := "ok"
+		if err := st.CheckInvariants(); err != nil {
+			invariants = "BROKEN: " + err.Error()
+		}
+		fmt.Fprintf(out, "state      seq %d, invariants %s\ndigest     %x\n", st.LastSeq(), invariants, st.Digest())
+		return nil
 	}
 
 	fmt.Fprintf(out, "journal    %s\n", path)

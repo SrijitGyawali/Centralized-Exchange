@@ -112,7 +112,11 @@ func TestReplayErrors(t *testing.T) {
 	if err := run([]string{"-data-dir", t.TempDir()}, &out); err == nil {
 		t.Error("a directory without a journal: no error")
 	}
-	if err := run([]string{"-explain", "1"}, &out); err == nil || !strings.Contains(err.Error(), "week 8") {
-		t.Errorf("-explain: error = %v, want 'arrives in week 8'", err)
+	dir, _ := writeJournal(t)
+	if err := run([]string{"-data-dir", dir, "-explain", "999"}, &out); err == nil || !strings.Contains(err.Error(), "never accepted") {
+		t.Errorf("-explain of an unknown order: error = %v, want 'never accepted'", err)
+	}
+	if err := run([]string{"-data-dir", dir, "-explain-seq", "999"}, &out); err == nil || !strings.Contains(err.Error(), "not in this journal") {
+		t.Errorf("-explain-seq beyond the journal: error = %v, want 'not in this journal'", err)
 	}
 }
