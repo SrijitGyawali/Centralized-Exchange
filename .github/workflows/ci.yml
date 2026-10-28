@@ -39,6 +39,15 @@ jobs:
       - name: week 5 HTTP crash and retry gate
         run: go run ./tests/week5
 
+      # Week 8: the drills and the demo, as quick smoke runs, so neither can
+      # silently rot. The full drills (5 kill rounds, 1M-command recovery)
+      # produce the evidence in evidence/crash/.
+      - name: crash, retry, money and restore drills (quick)
+        run: go run ./tests/drills -out drills-ci -crash-rounds 1 -sizes ""
+
+      - name: the three-minute demo
+        run: go run ./tests/demo
+
   # Tests that need a real PostgreSQL. GitHub's Linux runners have Docker, so
   # testcontainers can start one per test package. Kept as a separate job so
   # a Docker hiccup is visibly different from a unit-test failure.
