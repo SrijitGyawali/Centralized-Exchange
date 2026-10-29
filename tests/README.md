@@ -1,15 +1,14 @@
 # tests/
 
-Cross-package and black-box tests. Unit tests do **not** live here. They
-sit beside the code they test (`internal/book/book_test.go`).
+Cross-package, black-box programs that run the **real binaries**. Unit tests
+live beside the code they test (`internal/book/book_test.go`); integration
+tests that need Docker use the `integration` build tag.
 
-Planned contents:
-
-| Directory | Week | What it proves |
+| Directory | Run with | What it proves |
 |---|---|---|
-| `crash/` | 4 | A subprocess harness kills `cexd` at injected points (before append, partial frame, after write before Sync, after Sync before Apply, after Apply before reply) and checks that every acknowledged effect survives exactly once. |
-| `e2e/` | 5 | Place → match → query → cancel over real HTTP, including a lost response retried with the same key. |
-| `recovery/` | 4-6 | Full-state digest after restart equals an independent replay of the recovered log, and the SQL rebuild agrees. |
+| [`crash/`](crash/) | `go test ./tests/crash` | A subprocess harness kills the node at every journal boundary (before / mid / after write, after fsync, after apply) and checks that every acknowledged effect survives exactly once and the recovered digest matches an independent replay. |
+| [`e2e/`](e2e/) | `go run ./tests/e2e` | The HTTP API end to end against a crash-restarted `cexd`: funding, matching, queries, ownership, cancellation, recovery and idempotent retries. |
+| [`drills/`](drills/) | `make drills` | Hard kills under load with lookups and retries, money checks, hot and cold journal restores, and recovery time at 100k and 1M commands. Report: [`evidence/crash/`](../evidence/crash/). |
+| [`demo/`](demo/) | `make demo` | The three-minute demonstration ([docs/DEMO.md](../docs/DEMO.md)); fails if a retry after a crash is not the original result. |
 
-Integration tests that need Docker or PostgreSQL will use a build tag
-(`//go:build integration`) so `go test ./...` stays fast and hermetic.
+CI runs all four on every push (the drills in a quick, one-kill form).
