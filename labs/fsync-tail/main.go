@@ -1,5 +1,5 @@
 // Command fsync-tail measures the DISTRIBUTION of fsync latency for small
-// appends, three ways, to test one hypothesis from the week-7 load tests:
+// appends, three ways, to test one hypothesis from the load tests:
 //
 //	Rare fsyncs of 100 ms - 1 s stall the engine. Is that because the
 //	journal GROWS on every append, so each fsync must also flush file-system

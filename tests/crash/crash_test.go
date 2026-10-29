@@ -1,4 +1,4 @@
-// Package crash_test is the plan's week-4 gate: a subprocess crash harness
+// Package crash_test is a subprocess crash harness
 // that confirms acknowledged effects survive, unknown outcomes resolve by
 // key, and the restored state matches the recovered log.
 //
