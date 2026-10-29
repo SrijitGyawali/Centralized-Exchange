@@ -29,7 +29,7 @@ type Config struct {
 	Journal Journal
 	// Hooks are test-only crash points; production leaves them nil.
 	Hooks Hooks
-	// Observer receives timings and outcomes (week 7). nil means none.
+	// Observer receives timings and outcomes. nil means none.
 	Observer Observer
 }
 
@@ -71,7 +71,7 @@ type Snapshot struct {
 
 // PublicTrade is what everyone may see about a fill: when, at what price,
 // how much, and which side was the aggressor. Never who traded, and never
-// order IDs: those are private (week 5 privacy rules).
+// order IDs: those are private (ADR-0007).
 type PublicTrade struct {
 	Seq       domain.Seq // the command that produced the fill
 	Price     domain.Price

@@ -1,5 +1,5 @@
 // Package telemetry turns what the exchange measures into Prometheus metrics
-// (week 7, ADR-0011). It is the ONLY package that imports the Prometheus
+// (ADR-0011). It is the ONLY package that imports the Prometheus
 // client; every other package reports through a small interface or a plain
 // function it declares itself:
 //
@@ -12,7 +12,7 @@
 // So the core stays free of third-party code (ADR-0003 rule 4), and every
 // package can be tested with a tiny fake instead of a metrics registry.
 //
-// # The three latencies the week-7 report must keep apart
+// # Three nested latencies
 //
 //	HTTP   cex_http_request_duration_seconds   handler start → handler return
 //	  └─ engine total  cex_engine_command_seconds   admission → reply

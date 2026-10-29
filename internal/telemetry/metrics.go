@@ -22,7 +22,7 @@ var (
 	// cpuBuckets: pure computation (apply, queries), 1 µs to 10 ms.
 	cpuBuckets = []float64{1e-6, 2.5e-6, 5e-6, 10e-6, 25e-6, 50e-6, 100e-6, 250e-6, 500e-6, 1e-3, 2.5e-3, 5e-3, 10e-3}
 	// diskBuckets: write and fsync, 50 µs to 1 s, densest around the
-	// ~1.2 ms fsync measured in week 5.
+	// ~1.2 ms fsync measured on the development machine.
 	diskBuckets = []float64{50e-6, 100e-6, 250e-6, 500e-6, 750e-6, 1e-3, 1.25e-3, 1.5e-3, 2e-3, 3e-3, 5e-3, 7.5e-3, 10e-3, 25e-3, 50e-3, 100e-3, 250e-3, 1}
 	// latencyBuckets: end-to-end waits (queue, engine, HTTP), 50 µs to 10 s.
 	latencyBuckets = []float64{50e-6, 100e-6, 250e-6, 500e-6, 1e-3, 1.5e-3, 2e-3, 3e-3, 5e-3, 7.5e-3, 10e-3, 25e-3, 50e-3, 100e-3, 250e-3, 500e-3, 1, 2.5, 5, 10}

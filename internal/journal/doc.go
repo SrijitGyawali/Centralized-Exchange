@@ -1,6 +1,6 @@
 // Package journal is the durable, append-only command log (write-ahead log).
 // It is the system's source of truth: the in-memory state is rebuilt from it
-// at every start, and the SQL projection (week 6) will be too.
+// at every start, and the SQL read model is projected from it.
 //
 // # Files
 //

@@ -25,7 +25,7 @@ func (s *Status) ProjectedSeq() domain.Seq { return domain.Seq(s.seq.Load()) }
 func (s *Status) Healthy() bool { return s.healthy.Load() }
 
 // Failures counts every failed start or catch-up since the server started
-// (week 7 metrics). Each one is followed by a wait and a rebuild from the
+// (exported as a metric). Each one is followed by a wait and a rebuild from the
 // checkpoint, so a rising count means "the database keeps failing", while
 // Healthy only says what is true right now.
 func (s *Status) Failures() uint64 { return s.failures.Load() }

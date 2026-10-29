@@ -104,7 +104,7 @@ func (m *Metrics) Engine() engine.Observer { return m.observer }
 //
 // It holds every labelled child metric ALREADY RESOLVED. Applied runs on the
 // owner goroutine for every command; WithLabelValues would hash the label
-// values and take a read lock to find the child each time (the week-7
+// values and take a read lock to find the child each time (the load-test
 // profile showed it costing as much as publishing the snapshot). Resolving
 // once at startup turns that into two array lookups.
 type engineObserver struct {

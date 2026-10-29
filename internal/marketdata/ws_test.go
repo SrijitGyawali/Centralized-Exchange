@@ -92,7 +92,7 @@ func TestStreamDeliversTheLiveBook(t *testing.T) {
 	}
 }
 
-// TestSlowBrowserNeverBlocksMatching is the week-6 market-data gate. One
+// TestSlowBrowserNeverBlocksMatching is the market-data gate. One
 // browser stops reading completely; another reads normally. Orders keep
 // flowing through the engine the whole time. Matching latency must stay
 // low, the stuck browser must eventually be cut off, and the healthy one

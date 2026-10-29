@@ -39,7 +39,7 @@ type Hooks struct {
 // Options configures Open.
 type Options struct {
 	Hooks Hooks
-	// OnSync, if set, is told about every successful append (week 7
+	// OnSync, if set, is told about every successful append (for
 	// metrics): how many bytes were written, and how long the write and the
 	// fsync each took. Splitting the two shows where durable time goes:
 	// write only copies into the OS cache; fsync waits for the device.

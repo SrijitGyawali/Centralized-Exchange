@@ -53,11 +53,11 @@ type Config struct {
 	ReadTimeout       time.Duration
 	WriteTimeout      time.Duration
 	IdleTimeout       time.Duration
-	// DatabaseURL enables the PostgreSQL read model (week 6). Empty means
+	// DatabaseURL enables the PostgreSQL read model. Empty means
 	// no projection. It contains a password, so it is never logged.
 	DatabaseURL string
 	// AdminAddr is the PRIVATE operator listener for /metrics and
-	// /debug/pprof (week 7). Default 127.0.0.1:6060: loopback only, so
+	// /debug/pprof. Default 127.0.0.1:6060: loopback only, so
 	// nothing outside the machine can reach profiling endpoints. Empty
 	// after Load means disabled (CEX_ADMIN_ADDR=off).
 	AdminAddr string

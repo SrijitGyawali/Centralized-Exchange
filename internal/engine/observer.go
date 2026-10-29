@@ -6,7 +6,7 @@ import (
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/command"
 )
 
-// Observer receives the engine's own measurements (week 7). The engine
+// Observer receives the engine's own measurements. The engine
 // declares what it reports; package telemetry turns it into Prometheus
 // metrics. The engine never imports a metrics library, and tests can pass a
 // tiny fake.

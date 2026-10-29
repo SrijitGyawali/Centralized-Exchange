@@ -61,7 +61,7 @@ const (
 //
 // The hub reads the engine's lock-free snapshot pointer and never touches
 // the engine's goroutine. However slow or numerous the subscribers are,
-// matching cannot be slowed down by them: the property the week-6 gate
+// matching cannot be slowed down by them: the property the market-data gate
 // requires ("a slow browser never blocks matching").
 //
 // Why not one shared channel? A Go channel with many receivers DISTRIBUTES
@@ -80,7 +80,7 @@ type Hub struct {
 	stats   Stats // running totals, guarded by mu like everything above
 }
 
-// Stats are the hub's running totals since it started (week 7 metrics).
+// Stats are the hub's running totals since it started (exported as metrics).
 // Together they answer "is anyone watching, and is anyone too slow?".
 type Stats struct {
 	Subscribers    int    // streams open right now

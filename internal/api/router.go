@@ -6,8 +6,8 @@ import "net/http"
 // It returns nil when ready, or an error explaining why not.
 //
 // The api package does not know *how* readiness is decided. main injects
-// this function. Later it will check that replay is complete, the journal
-// is writable and trading is not halted (see docs/ARCHITECTURE.md §7).
+// this function: cexd passes node.Ready, which reports a halted engine
+// (after a storage or apply failure) as not ready.
 type ReadinessFunc func() error
 
 // NewRouter returns the public health handler. NewServer adds protected trading.

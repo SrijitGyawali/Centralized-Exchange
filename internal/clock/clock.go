@@ -1,5 +1,5 @@
 // Package clock is a high-resolution monotonic clock for MEASURING
-// durations (week 7). It is never used for wall-clock time or for anything
+// durations. It is never used for wall-clock time or for anything
 // the state machine decides: Apply stays pure.
 //
 // Why not time.Now? On Linux it is precise to nanoseconds. On Windows, Go's
