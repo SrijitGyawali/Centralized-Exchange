@@ -6,7 +6,7 @@ directory or package owns each responsibility. It explains the *why* behind
 the repository layout. Detailed decisions live in [ADRs](adr/), and the full
 roadmap is in the [master plan](plan/CEX_Go_Guided_Master_Plan.md).
 
-> Status: Tier 1 complete, released as v0.1.0 (weeks 1-8). Week 8 added the replay inspector's -explain, the drills and the demo; see [RELEASE.md](RELEASE.md) and [LIMITATIONS.md](LIMITATIONS.md). Each section notes the week it was built.
+> **v0.1.0 · Tier 1 complete.** What ships: [RELEASE.md](RELEASE.md). What does not: [LIMITATIONS.md](LIMITATIONS.md).
 
 ---
 
@@ -69,25 +69,25 @@ Key ideas:
 
 ## 3. Components
 
-| Component | Package | Responsibility | Week |
-|---|---|---|---|
-| Units and rules | `internal/domain` | `Price`, `Qty`, `Notional` integer types, checked arithmetic, decimal-string parsing, symbol config, `Side`, `TimeInForce`, IDs | 1 |
-| Commands | `internal/command` | Data-only command structs (`PlaceOrder`, `CancelOrder`, `Fund`) and their `Result`s. Shared by api, engine, journal and state. | 1-3 |
-| Order book | `internal/book` | Sorted price levels, FIFO queue per level, order-ID index, matching loop, depth copies | 1-2 |
-| State machine | `internal/state` | `State` (books, accounts, reservations, ledger, dedupe, config) and the pure `Apply(cmd) Result` transition | 3 |
-| Journal (WAL) | `internal/journal` | Canonical command codec; frames with magic, version, length, Seq and separate header/payload CRC-32C; append + `Sync`; recovery scan (torn tail truncated, corruption refused). See ADR-0006 | 4 |
-| Node | `internal/node` | Startup recovery (open journal, replay into a fresh state, check invariants, digest) and engine lifecycle. Used by `cexd`, the crash harness and tests | 4 |
-| Engine | `internal/engine` | Owner goroutine: intake queue, sequencing, group commit, calls `Apply`, delivers replies, publishes read snapshots, halts on storage errors | 3-5 |
-| HTTP API | `internal/api` | Routing, JSON validation, auth, ownership checks, rate limits, status-code mapping, health/readiness | 1 (health), 5 |
-| Market data | `internal/marketdata` | Hub polls the lock-free engine snapshot (bounded rate), encodes full snapshots once, one bounded buffer per WebSocket viewer, slow viewers disconnected with a reason. See ADR-0010 | 6 |
-| Web UI | `internal/webui` | Embedded HTML/CSS/JS: live book, trade tape, seq and projection lag, balances, order form; strict CSP, textContent only | 6 |
-| Projector | `internal/projector` | Follows `journal.wal` read-only, replays it through a private `state.State`, writes commands/orders/trades/ledger/balances plus the checkpoint in ONE transaction (checkpoint row locked first), reconciles at the same Seq. See ADR-0009 | 6 |
-| Config | `internal/config` | Reads environment variables into a typed, validated `Config` | 1 |
-| Server binary | `cmd/cexd` | Composition root: builds every component, wires them, runs, shuts down gracefully | 1 |
-| Replay CLI | `cmd/replay` | Offline, read-only replay to a chosen sequence, state digest; `-explain <order>` (request, reservation, fills in priority order with each maker's Seq, outcome, later events, every ledger posting) and `-explain-seq <seq>` | 4, 8 |
-| Telemetry | `internal/telemetry` | The ONLY importer of the Prometheus client. Turns the engine Observer, journal OnSync, hub Stats, projector Status and API route names into metrics; HTTP middleware; served on the private admin port. See ADR-0011 | 7 |
-| Clock | `internal/clock` | High-resolution monotonic clock for measuring (QueryPerformanceCounter on Windows, where `time.Now` ticks every ~0.5 ms). Never used by the state machine | 7 |
-| Load generator | `cmd/loadgen` | Open-model workloads from versioned JSON, exact client percentiles, per-stage server attribution from `/metrics`, raw results. See ADR-0012 | 7 |
+| Component | Package | Responsibility |
+|---|---|---|
+| Units and rules | `internal/domain` | `Price`, `Qty`, `Notional` integer types, checked arithmetic, decimal-string parsing, symbol config, `Side`, `TimeInForce`, IDs |
+| Commands | `internal/command` | Data-only command structs (`PlaceOrder`, `CancelOrder`, `Fund`) and their `Result`s. Shared by api, engine, journal and state. |
+| Order book | `internal/book` | Sorted price levels, FIFO queue per level, order-ID index, matching loop, depth copies |
+| State machine | `internal/state` | `State` (books, accounts, reservations, ledger, dedupe, config) and the pure `Apply(cmd) Result` transition |
+| Journal (WAL) | `internal/journal` | Canonical command codec; frames with magic, version, length, Seq and separate header/payload CRC-32C; append + `Sync`; recovery scan (torn tail truncated, corruption refused). See ADR-0006 |
+| Node | `internal/node` | Startup recovery (open journal, replay into a fresh state, check invariants, digest) and engine lifecycle. Used by `cexd`, the crash harness and tests |
+| Engine | `internal/engine` | Owner goroutine: intake queue, sequencing, group commit, calls `Apply`, delivers replies, publishes read snapshots, halts on storage errors |
+| HTTP API | `internal/api` | Routing, JSON validation, auth, ownership checks, rate limits, status-code mapping, health/readiness |
+| Market data | `internal/marketdata` | Hub polls the lock-free engine snapshot (bounded rate), encodes full snapshots once, one bounded buffer per WebSocket viewer, slow viewers disconnected with a reason. See ADR-0010 |
+| Web UI | `internal/webui` | Embedded HTML/CSS/JS: live book, trade tape, seq and projection lag, balances, order form; strict CSP, textContent only |
+| Projector | `internal/projector` | Follows `journal.wal` read-only, replays it through a private `state.State`, writes commands/orders/trades/ledger/balances plus the checkpoint in ONE transaction (checkpoint row locked first), reconciles at the same Seq. See ADR-0009 |
+| Config | `internal/config` | Reads environment variables into a typed, validated `Config` |
+| Server binary | `cmd/cexd` | Composition root: builds every component, wires them, runs, shuts down gracefully |
+| Replay CLI | `cmd/replay` | Offline, read-only replay to a chosen sequence, state digest; `-explain <order>` (request, reservation, fills in priority order with each maker's Seq, outcome, later events, every ledger posting) and `-explain-seq <seq>` |
+| Telemetry | `internal/telemetry` | The ONLY importer of the Prometheus client. Turns the engine Observer, journal OnSync, hub Stats, projector Status and API route names into metrics; HTTP middleware; served on the private admin port. See ADR-0011 |
+| Clock | `internal/clock` | High-resolution monotonic clock for measuring (QueryPerformanceCounter on Windows, where `time.Now` ticks every ~0.5 ms). Never used by the state machine |
+| Load generator | `cmd/loadgen` | Open-model workloads from versioned JSON, exact client percentiles, per-stage server attribution from `/metrics`, raw results. See ADR-0012 |
 
 SQL migrations live inside `internal/projector/migrations` and the web client
 inside `internal/webui/static`, both compiled into the binary with `go:embed`.
@@ -136,8 +136,8 @@ Money representation (see [ADR-0002](adr/0002-units-and-fixed-point.md)):
 all amounts are `int64` counts of the smallest unit (lots, ticks, atoms). We
 never use floats, and every multiplication and addition is overflow-checked.
 
-Planned PostgreSQL tables (week 6): `orders`, `trades`, `ledger_journals`,
-`ledger_lines`, `account_balances`, `processed_events`,
+PostgreSQL tables (`internal/projector/migrations`): `commands`, `orders`,
+`trades`, `ledger_journals`, `ledger_lines`, `account_balances` and
 `projection_checkpoint`.
 
 ---
@@ -148,7 +148,7 @@ Planned PostgreSQL tables (week 6): `orders`, `trades`, `ledger_journals`,
 .
 ├── cmd/                      # One sub-directory per binary. Each has a main package.
 │   ├── cexd/                 #   The exchange server (composition root only, no business logic)
-│   ├── loadgen/              #   Open-model load generator (week 7)
+│   ├── loadgen/              #   Open-model load generator
 │   └── replay/               #   Offline replay / inspector CLI
 ├── internal/                 # Private code. The Go toolchain forbids imports from other modules.
 │   ├── domain/               #   Pure: units, checked math, enums, IDs
@@ -165,9 +165,9 @@ Planned PostgreSQL tables (week 6): `orders`, `trades`, `ledger_journals`,
 │   ├── telemetry/            #   Prometheus metrics (the only importer of the client)
 │   ├── clock/                #   High-resolution clock for measuring durations
 │   └── config/               #   Startup configuration
-├── tests/                    # Cross-package: crash harness (crash/), HTTP gate (week5/), drills (drills/), demo (demo/)
-├── loadtest/                 # Versioned workloads (JSON) and the outage drill (week 7)
-├── deploy/                   # Dockerfile, docker-compose, Prometheus, Grafana (week 7)
+├── tests/                    # Cross-package: crash harness (crash/), HTTP gate (e2e/), drills (drills/), demo (demo/)
+├── loadtest/                 # Versioned workloads (JSON) and the outage drill
+├── deploy/                   # Dockerfile, docker-compose, Prometheus, Grafana
 ├── labs/                     # Small Go runtime experiments (scheduler, GC, escape analysis…)
 ├── evidence/                 # Benchmark output, profiles, crash reports, demo recordings
 ├── track/                    # Day-by-day notes (track/2026-10-01/…): what, why, how
@@ -221,7 +221,7 @@ Planned PostgreSQL tables (week 6): `orders`, `trades`, `ledger_journals`,
 
 ---
 
-## 7. HTTP API (implemented, week 5)
+## 7. HTTP API
 
 | Method & path | Purpose | Notes |
 |---|---|---|
@@ -235,8 +235,8 @@ Planned PostgreSQL tables (week 6): `orders`, `trades`, `ledger_journals`,
 | `GET /v1/balances` | Available and reserved per asset | Tagged `seq` |
 | `GET /v1/book?symbol=BTC-USDT` | Depth snapshot | Tagged `seq` |
 | `POST /v1/admin/fund` | Create simulated money | Admin only; `user_id`, `asset`, `amount` strings |
-| `GET /v1/status` | Engine and read-model progress | `applied_seq`, and `projection.projected_seq` / `lag` / `healthy` (week 6) |
-| `GET /stream/book` (WebSocket) | Public full snapshots: depth + last 50 trades, tagged with seq | No token; slow viewers get close 1013. Week 6 |
+| `GET /v1/status` | Engine and read-model progress | `applied_seq`, and `projection.projected_seq` / `lag` / `healthy` |
+| `GET /stream/book` (WebSocket) | Public full snapshots: depth + last 50 trades, tagged with seq | No token; slow viewers get close 1013 |
 | `GET /` | The web client | Static, embedded |
 
 All `/v1` routes require bearer authentication. Auth precedes per-user rate
@@ -253,7 +253,7 @@ AppendBatch validates all frames, writes once and syncs once before Apply or
 reply. Failures halt the engine; recovery can replay a complete batch prefix.
 The WAL frame format is unchanged. See [ADR-0008](adr/0008-opportunistic-group-commit.md).
 
-### Operator endpoints (private admin port, week 7)
+### Operator endpoints (private admin port)
 
 Served on `CEX_ADMIN_ADDR` (default `127.0.0.1:6060`, `off` disables), never
 on the public port. See [ADR-0011](adr/0011-metrics-and-private-admin-port.md).
@@ -268,13 +268,13 @@ the container and exits 0 or 1.
 
 ---
 
-## 8. Build order
+## 8. How it was built
 
-Feature order follows the plan: correct state transitions, then durable
-ordering, retry safety, API, visibility, safeguards, and finally
-replication.
+Eight weeks, each ending on a gate (a test that proves the week's claim):
+correct state transitions first, then durable ordering, retry safety, the
+API, visibility, measurement, and the release. Replication is next.
 
-| Week | Packages that come alive |
+| Week | What was built |
 |---|---|
 | 1 | `domain`, `book` (insert/cancel/FIFO), `config`, `cmd/cexd` health |
 | 2 | `book` matching + slow reference matcher (in tests) |
@@ -282,5 +282,5 @@ replication.
 | 4 | `journal`, replay on startup, `cmd/replay`, crash harness in `tests/` |
 | 5 | `api` endpoints, auth, group commit |
 | 6 | `projector` + PostgreSQL, `marketdata` WebSocket, minimal UI |
-| 7 | ✅ `telemetry`, `clock`, `cmd/loadgen`, `loadtest/`, `deploy/` (Compose, Prometheus, Grafana), profiles and load results in `evidence/` |
-| 8 | ✅ `replay -explain`, `tests/drills` (crash, retry, money, restore, recovery time), `tests/demo`, LIMITATIONS, DEMO, RELEASE, tag `v0.1.0` |
+| 7 | `telemetry`, `clock`, `cmd/loadgen`, `loadtest/`, `deploy/` (Compose, Prometheus, Grafana), profiles and load results in `evidence/` |
+| 8 | `replay -explain`, `tests/drills` (crash, retry, money, restore, recovery time), `tests/demo`, LIMITATIONS, DEMO, RELEASE, tag `v0.1.0` |
