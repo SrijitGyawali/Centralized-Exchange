@@ -15,7 +15,7 @@ import (
 // up to 10 messages a second, so a viewer like this fills its buffer and is
 // disconnected ("slow consumer"); it then reconnects, as the web UI does.
 //
-// Running these during a load test checks the week-6 promise under load: a
+// Running these during a load test checks the market-data promise under load: a
 // slow browser costs the engine nothing. Their drops appear in the report
 // next to the trading latencies of the same stage.
 type slowViewers struct {

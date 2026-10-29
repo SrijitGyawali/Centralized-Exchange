@@ -1,6 +1,6 @@
 // Command loadgen offers a reproducible, open-model trading workload to a
 // running cexd and reports what the client saw AND what the server measured
-// about itself, stage by stage (week 7).
+// about itself, stage by stage.
 //
 //	loadgen tokens loadtest/workloads/step.json        # CEX_API_TOKENS for the server
 //	loadgen run -workload loadtest/workloads/step.json -out evidence/load/<name>

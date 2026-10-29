@@ -7,8 +7,8 @@
 //  1. load config
 //  2. recover: open the journal in DataDir, replay it into a fresh state,
 //     check every invariant, start the engine (node.Open)
-//  3. (week 6) start projector and market data
-//  4. (week 7) metrics everywhere, served with pprof on a private admin port
+//  3. start the optional projector and the market-data hub
+//  4. wire metrics, served with pprof on a private admin port
 //  5. serve HTTP; /readyz answers 200 once recovery has succeeded
 //  6. on SIGINT/SIGTERM shut down in reverse order: stop HTTP, then stop
 //     admitting, drain the engine and close the journal
@@ -86,7 +86,7 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 		"data_dir", cfg.DataDir,
 	)
 
-	// Metrics (week 7) exist before recovery, so the engine and the journal
+	// Metrics exist before recovery, so the engine and the journal
 	// report from their very first command.
 	metrics := telemetry.New(version)
 
@@ -125,7 +125,7 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 	metrics.WatchJournalFile(filepath.Join(cfg.DataDir, journal.FileName))
 	appliedSeq := func() domain.Seq { return nd.Engine.Snapshot().Seq }
 
-	// The SQL read model (week 6) is optional. When enabled, a projector
+	// The SQL read model is optional. When enabled, a projector
 	// goroutine follows the journal file and writes PostgreSQL. It never
 	// talks to the engine, and trading never waits for it: a database outage
 	// only makes history stale (ADR-0009). The URL holds a password, so it is
@@ -169,7 +169,7 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 	for token, identity := range cfg.Tokens {
 		tokens[token] = api.Principal{User: identity.User, Admin: identity.Admin}
 	}
-	// Public market data (week 6): a hub reads the engine's lock-free
+	// Public market data: a hub reads the engine's lock-free
 	// snapshot at a bounded rate and fans it out over WebSocket. It never
 	// touches the engine goroutine, so no viewer can slow matching down.
 	hub := marketdata.New(nd.Engine.Snapshot, marketdata.Config{})

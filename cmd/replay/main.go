@@ -14,7 +14,7 @@
 // It never opens a network port and never touches a running server, so it
 // is safe to run against a COPY of production data during an incident.
 //
-// -explain and -explain-seq (week 8) recompute everything from the journal
+// -explain and -explain-seq recompute everything from the journal
 // with the same state.Apply the server ran (explain.go): nothing comes from
 // logs or SQL, so the explanation is exactly what the exchange decided.
 package main

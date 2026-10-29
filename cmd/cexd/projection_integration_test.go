@@ -17,7 +17,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 )
 
-// TestProjectionOutageNeverStopsTrading is the week-6 read-model gate, run
+// TestProjectionOutageNeverStopsTrading is the read-model outage gate, run
 // against the real server, real HTTP and a real PostgreSQL in Docker:
 //
 //  1. trade over HTTP; /v1/status shows the lag reach 0; SQL holds the rows
