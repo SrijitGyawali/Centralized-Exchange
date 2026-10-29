@@ -71,7 +71,7 @@ container, cloning from GitHub): see
 | One symbol with documented GTC/IOC/cancel/self-trade semantics and exact fixed-point units | ✅ | `internal/book` (rules in `book.Place`'s comment), ADR-0002, `replay -explain` |
 | Reference tests and money/reservation invariants pass for recorded and generated cases | ✅ | `internal/book/random_test.go` (reference model), `internal/state` invariant and random tests, golden session fixtures, fuzzing |
 | WAL errors halt mutation; partial-tail and complete-frame corruption are handled differently | ✅ | `internal/engine` halt tests, `internal/journal` torn-tail vs corruption tests, ADR-0006 |
-| Full-state replay agrees; acknowledged operations survive process crash; retries cannot duplicate effects | ✅ | `tests/crash`, `tests/week5`, [drills](../evidence/crash/2026-10-28/report.md) (digest equality, every answer kept, exactly-once retries) |
+| Full-state replay agrees; acknowledged operations survive process crash; retries cannot duplicate effects | ✅ | `tests/crash`, `tests/e2e`, [drills](../evidence/crash/2026-10-28/report.md) (digest equality, every answer kept, exactly-once retries) |
 | API ownership, queue limits, timeout behavior and query consistency are documented and tested | ✅ | ADR-0005, ADR-0007, `internal/api` tests, `internal/engine` overload and timeout tests |
 | Live view and ledger are inspectable; SQL rebuild/checkpoint tests pass | ✅ | web UI and `/stream/book`, `replay -explain`, `internal/projector` integration tests |
 | Load report separates pure matching from durable and HTTP latency, including rejection/error rates | ✅ | [PERFORMANCE.md](PERFORMANCE.md), [`evidence/load/`](../evidence/load/) |
@@ -97,7 +97,7 @@ be made from `make demo` with the spoken script in [DEMO.md](DEMO.md).
 ```bash
 make check                 # gofmt, vet, race-enabled tests
 make test-integration      # PostgreSQL (Docker)
-go run ./tests/week5       # HTTP crash and retry gate
+go run ./tests/e2e         # HTTP crash and retry gate
 make drills                # crash, retry, money, restore, recovery time
 make demo
 make vuln                  # govulncheck: 0 reachable vulnerabilities at release

@@ -1,4 +1,6 @@
-// Command week5 exercises the public API against a real, crash-restarted cexd.
+// Command e2e exercises the public API end to end against a real,
+// crash-restarted cexd: funding, matching, queries, ownership, cancellation,
+// crash recovery and idempotent retries, over real HTTP.
 package main
 
 import (
@@ -19,8 +21,8 @@ import (
 	"time"
 )
 
-const admin = "week5-admin-token"
-const seller = "week5-seller-token"
+const admin = "e2e-admin-token-01"
+const seller = "e2e-seller-token-1"
 
 type gate struct {
 	base   string
@@ -32,14 +34,14 @@ type gate struct {
 
 func main() {
 	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, "week5 gate:", err)
+		fmt.Fprintln(os.Stderr, "e2e gate:", err)
 		os.Exit(1)
 	}
-	fmt.Println("week5 process gate passed: funding, matching, queries, ownership, cancellation, crash recovery and idempotent retries")
+	fmt.Println("e2e gate passed: funding, matching, queries, ownership, cancellation, crash recovery and idempotent retries")
 }
 
 func run() error {
-	dir, err := os.MkdirTemp("", "cex-week5-")
+	dir, err := os.MkdirTemp("", "cex-e2e-")
 	if err != nil {
 		return err
 	}

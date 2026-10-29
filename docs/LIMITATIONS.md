@@ -14,7 +14,7 @@ command, nothing is ever withdrawn, and it must never hold real funds.
 
 | Failure | Status | Evidence |
 |---|---|---|
-| Process crash (hard kill: SIGKILL / TerminateProcess) under load | ✅ Tested: no acknowledged command lost, every lost response retried with exactly one effect, money conserved | [drills](../evidence/crash/2026-10-28/report.md), `tests/crash`, `go run ./tests/week5` |
+| Process crash (hard kill: SIGKILL / TerminateProcess) under load | ✅ Tested: no acknowledged command lost, every lost response retried with exactly one effect, money conserved | [drills](../evidence/crash/2026-10-28/report.md), `tests/crash`, `go run ./tests/e2e` |
 | Crash at every journal boundary (before / mid / after write, after fsync) | ✅ Tested with failpoints, deterministically | `tests/crash` |
 | Torn final frame | ✅ Cut off at startup (it was never acknowledged) | `internal/journal`, `tests/crash` |
 | Corrupt complete frame | ✅ Startup **refuses** and leaves the file untouched | `internal/journal` tests, ADR-0006 |

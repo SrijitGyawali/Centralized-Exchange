@@ -123,4 +123,4 @@ counterparties and integer unit details, so HTTP has explicit DTOs.
 Private reads run through the engine's ordered queue; book reads use immutable
 snapshots. Request timeouts bound waiting, server timeouts bound network I/O,
 and write timeout must exceed request timeout. No trading path runs Apply in an
-HTTP goroutine. The test suites and `go run ./tests/week5` exercise this contract.
+HTTP goroutine. The test suites and `go run ./tests/e2e` exercise this contract.

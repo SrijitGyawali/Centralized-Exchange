@@ -36,8 +36,8 @@ jobs:
       - name: test (race detector)
         run: go test -race -count=1 ./...
 
-      - name: week 5 HTTP crash and retry gate
-        run: go run ./tests/week5
+      - name: end-to-end HTTP crash and retry gate
+        run: go run ./tests/e2e
 
       # Week 8: the drills and the demo, as quick smoke runs, so neither can
       # silently rot. The full drills (5 kill rounds, 1M-command recovery)
