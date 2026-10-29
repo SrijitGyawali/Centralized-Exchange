@@ -1,6 +1,6 @@
 # 26 October 2026: reviewing week 5, then the SQL read model (week 6, part 1)
 
-> **One-line summary:** Codex's week-5 work (HTTP API + group commit) was
+> **One-line summary:** the week-5 work (HTTP API + group commit) was
 > reviewed and confirmed on `main`. Then the exchange got a **PostgreSQL
 > history**: a projector follows the journal and writes orders, trades and
 > the ledger into SQL, without ever slowing trading down.

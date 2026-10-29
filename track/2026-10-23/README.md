@@ -1,11 +1,9 @@
-# 2026-10-23 — Week 5: HTTP API and group commit
+# 23 October 2026: the HTTP API and group commit (week 5)
 
 ## Starting point
 
-Local main and GitHub both ended at `2d01cc5`, the week-4 track note. There
-were no uncommitted files or remote week-5 commits to recover from the interrupted
-cloud session. This session implemented the supplied week-5 design on
-`codex/week-5-http-group-commit`.
+The base was `2d01cc5`, the week-4 track note. Week 5 was built on a feature
+branch and merged into `main` after review.
 
 ## What changed and why
 
