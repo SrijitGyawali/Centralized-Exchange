@@ -20,7 +20,7 @@ import (
 // golden file's diff in git like any other code change.
 var update = flag.Bool("update", false, "rewrite testdata/*.golden from the current output")
 
-// TestFixtureReplaysIdentically is the week-2 gate: "a saved command fixture
+// TestFixtureReplaysIdentically is the matching gate: "a saved command fixture
 // replays identically twice."
 //
 // It replays testdata/session.cmds into two fresh books, requires the two

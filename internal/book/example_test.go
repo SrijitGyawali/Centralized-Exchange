@@ -7,7 +7,7 @@ import (
 	"github.com/SrijitGyawali/Centralized-Exchange/internal/domain"
 )
 
-// Example is the week-1 gate from the plan: add five orders, cancel some,
+// Example is the book's acceptance scenario: add five orders, cancel some,
 // print the expected book, and reject invalid units without panicking.
 //
 // This file uses package book_test (note the _test suffix): a separate

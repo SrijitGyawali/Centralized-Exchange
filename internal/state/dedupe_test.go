@@ -71,7 +71,7 @@ func TestRetryReturnsTheOriginalResult(t *testing.T) {
 
 // The stored result is the answer to "what happened to MY request?", not a
 // live status. Even after the order later fills, a retry still reports the
-// original outcome (rested). Status queries are a separate API (week 5).
+// original outcome (rested). Status queries are a separate API.
 func TestRetryAfterStateChangedStillReturnsTheOriginal(t *testing.T) {
 	h := newHarness(t)
 	h.fund(alice, domain.USDT, usdt(10_000))

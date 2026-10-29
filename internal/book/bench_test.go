@@ -7,7 +7,7 @@ import (
 )
 
 // Microbenchmarks for the three basic book operations, measured separately
-// as the plan asks (week 2). Run them with:
+// so each can be tracked on its own. Run them with:
 //
 //	go test -run '^$' -bench . -benchmem ./internal/book
 //

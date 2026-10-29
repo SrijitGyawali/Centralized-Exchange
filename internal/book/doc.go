@@ -1,7 +1,7 @@
 // Package book implements a single symbol's limit order book and its
 // price-time priority matching.
 //
-// # Data structure (weeks 1-2)
+// # Data structure
 //
 //   - Bids sorted high→low and asks sorted low→high, as slices of price
 //     levels. Inserting a new level costs O(P), where P is the number of

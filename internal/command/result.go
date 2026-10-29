@@ -90,7 +90,7 @@ func (r Result) Accepted() bool { return r.Rejected == NotRejected }
 // Result holds a slice. Copying the struct copies only the slice HEADER,
 // so both copies would share one backing array, and a caller appending to or
 // editing its Fills could change the stored dedupe result. Clone gives the
-// copy its own array. Go concept: slices are references to shared memory.
+// copy its own array. Slices share their backing array.
 func (r Result) Clone() Result {
 	r.Fills = slices.Clone(r.Fills)
 	return r

@@ -18,7 +18,7 @@ type State struct {
 
 	// balances holds every non-zero balance, keyed by owner, asset and
 	// bucket. Zero balances are deleted, so the map stays small and has a
-	// single canonical form, which week 4's state digest will need.
+	// single canonical form, which the state digest needs.
 	balances map[balanceKey]int64
 
 	// open tracks how much each resting order has reserved. The book knows

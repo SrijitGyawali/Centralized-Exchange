@@ -57,7 +57,7 @@ type CancelOrder struct {
 
 // Fund creates test money for a user: the paper-trading stand-in for a
 // deposit. Amount is in the asset's smallest unit (lots or atoms). Only
-// operators may send it; the API enforces that (week 5).
+// operators may send it; the API enforces that.
 type Fund struct {
 	To     domain.UserID
 	Asset  domain.Asset

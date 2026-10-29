@@ -107,7 +107,7 @@ func (k JournalKind) String() string {
 // (Seq, Index) is its stable, unique identity: the command that produced it
 // and its position among that command's journals. Replaying the same
 // commands always produces the same journals with the same identities.
-// Week 6's SQL projector will use that pair as a primary key, so delivering
+// The SQL projector uses that pair as a primary key, so delivering
 // a journal twice is harmless.
 type Journal struct {
 	Seq      domain.Seq

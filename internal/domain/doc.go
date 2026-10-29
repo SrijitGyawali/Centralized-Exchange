@@ -4,7 +4,7 @@
 // It is the innermost package of the pure core and imports only the standard
 // library. Everything else in the system depends on it.
 //
-// # Responsibilities (week 1)
+// # Responsibilities
 //
 //   - Named integer types: Price (ticks), Qty (lots), Atoms (quote units).
 //     Named types make the compiler reject Price + Qty by accident.

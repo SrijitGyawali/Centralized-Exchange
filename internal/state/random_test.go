@@ -22,7 +22,7 @@ type userAsset struct {
 // brand-new State and demands identical effects (results AND journals) for
 // each one, and an identical final state.
 //
-// This is determinism, the property crash recovery (week 4) rests on:
+// This is determinism, the property crash recovery rests on:
 // after a crash the exchange rebuilds itself by replaying its command log,
 // and that only works if replay reproduces the original exactly.
 func assertReplayIsIdentical(t *testing.T, h *harness) {
@@ -51,7 +51,7 @@ func assertReplayIsIdentical(t *testing.T, h *harness) {
 	}
 }
 
-// TestRandomCommandsKeepMoneyCorrect is the plan's week-3 property test:
+// TestRandomCommandsKeepMoneyCorrect is the money property test:
 // "every generated command preserves account and order invariants."
 //
 // It sends 3,000 random commands (funding, orders, cancels, exact retries

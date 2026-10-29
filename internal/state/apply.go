@@ -43,7 +43,7 @@ var ErrSeqNotIncreasing = errors.New("command sequence not increasing")
 // Apply is pure in the sense the whole design depends on: no clock, no
 // randomness, no I/O, no dependence on map iteration order. The same
 // commands in the same order always produce the same results, journals and
-// state, which is what makes crash recovery by replay (week 4) possible.
+// state, which is what makes crash recovery by replay possible.
 func (s *State) Apply(cmd command.Command) (Effects, error) {
 	if cmd.Seq <= s.lastSeq {
 		return Effects{}, fmt.Errorf("%w: got %d, last was %d", ErrSeqNotIncreasing, cmd.Seq, s.lastSeq)
